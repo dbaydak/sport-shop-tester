@@ -123,10 +123,9 @@ function setupEventForm() {
     const form = document.getElementById('event-form');
     // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
     // Находим кнопку по ее ID для надежности
-    const submitBtn = document.getElementById('submit-event-btn');
-    if (submitBtn) {
-        // Возвращаем правильный обработчик для кнопки ЗАПИСИ НА МЕРОПРИЯТИЕ
-        submitBtn.addEventListener('click', handleEventForm); // <-- ПРАВИЛЬНО
+    const form = document.getElementById('event-form');
+    if (form) {
+        form.addEventListener('submit', handleEventForm);
     }
 }
 // ====================================================================
@@ -273,9 +272,9 @@ function displayCheckoutPage() {
 
     // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
     // Возвращаем правильный обработчик для кнопки ОФОРМЛЕНИЯ ЗАКАЗА
-    const submitBtn = document.getElementById('submit-order-btn');
-    if (submitBtn) {
-        submitBtn.addEventListener('click', handleCheckoutForm); // <-- ПРАВИЛЬНО
+    const form = document.getElementById('checkout-form');
+    if (form) {
+        form.addEventListener('submit', handleCheckoutForm);
     }
 }
 async function handleCheckoutForm(e) {

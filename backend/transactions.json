@@ -587,5 +587,26 @@
         "amount": 0.0,
         "payment_method": "event_registration",
         "timestamp": "2025-09-09 17:21:29.396157"
+    },
+    {
+        "order_id": 3430,
+        "user_email": "test@test.com",
+        "amount": 990.0,
+        "payment_method": "cash",
+        "timestamp": "2025-09-09 17:34:43.412779"
+    },
+    {
+        "order_id": 7074,
+        "user_email": "test@test.com",
+        "amount": 990.0,
+        "payment_method": "cash",
+        "timestamp": "2025-09-09 17:34:52.987205"
+    },
+    {
+        "order_id": 4035,
+        "user_email": "test@test.com",
+        "amount": 0.0,
+        "payment_method": "cash",
+        "timestamp": "2025-09-09 17:38:46.370114"
     }
 ]
