@@ -608,5 +608,12 @@
         "amount": 0.0,
         "payment_method": "cash",
         "timestamp": "2025-09-09 17:38:46.370114"
+    },
+    {
+        "order_id": 2539,
+        "user_email": "test@test.com",
+        "amount": 990.0,
+        "payment_method": "cash",
+        "timestamp": "2025-09-09 19:24:56.481126"
     }
 ]

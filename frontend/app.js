@@ -120,11 +120,12 @@ function fireTrackingPixel(details, onComplete) {
  * Configures the event registration form.
  */
 function setupEventForm() {
-    const form = document.getElementById('event-form');
-    if (form) {
-        // Правильно: отслеживаем отправку всей формы
-        form.addEventListener('submit', handleEventForm);
+    // --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Слушаем КЛИК напрямую по КНОПКЕ ---
+    const submitBtn = document.getElementById('submit-event-btn');
+    if (submitBtn) {
+        submitBtn.addEventListener('click', handleEventForm);
     }
+    // --- КОНЕЦ ФИНАЛЬНОГО ИСПРАВЛЕНИЯ ---
 }
 // ====================================================================
 // --- NEW: Page Initializers for Categories & Products ---
@@ -264,11 +265,10 @@ function displayCartPage() {
     }
 }
 function displayCheckoutPage() {
-    // --- НАЧАЛО БЛОКА: Отрисовка корзины (этот код работает, оставляем его) ---
+    // --- Отрисовка корзины (оставляем как есть, всё работает) ---
     const cart = getCart();
     const itemsSummaryContainer = document.getElementById('cart-items-summary');
     const totalAmountEl = document.getElementById('summary-total-amount');
-
     if (itemsSummaryContainer) {
         itemsSummaryContainer.innerHTML = '';
         if (cart.length === 0) {
@@ -287,24 +287,16 @@ function displayCheckoutPage() {
             }
         }
     }
-    // --- КОНЕЦ БЛОКА: Отрисовка корзины ---
 
-
-    // --- НОВЫЙ ОТЛАДОЧНЫЙ БЛОК ---
-    console.log("DEBUG: Пытаюсь найти форму заказа на странице...");
-    const form = document.getElementById('checkout-form');
-
-    if (form) {
-        console.log("DEBUG: Форма НАЙДЕНА. Прикрепляю обработчик 'submit'.", form);
-        form.addEventListener('submit', handleCheckoutForm);
-        console.log("DEBUG: Обработчик успешно прикреплён.");
-    } else {
-        console.error("DEBUG: КРИТИЧЕСКАЯ ОШИБКА! Элемент <form id='checkout-form'> НЕ НАЙДЕН на странице.");
+    // --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Слушаем КЛИК напрямую по КНОПКЕ ---
+    const submitBtn = document.getElementById('submit-order-btn');
+    if (submitBtn) {
+        // Убрали 'submit' с формы, слушаем 'click' на кнопке
+        submitBtn.addEventListener('click', handleCheckoutForm);
     }
-    // --- КОНЕЦ НОВОГО ОТЛАДОЧНОГО БЛОКА ---
+    // --- КОНЕЦ ФИНАЛЬНОГО ИСПРАВЛЕНИЯ ---
 
-
-    // --- НАЧАЛО БЛОКА: Логика выбора оплаты (оставляем без изменений) ---
+    // --- Логика выбора оплаты (оставляем как есть) ---
     const paymentRadios = document.querySelectorAll('input[name="payment"]');
     const cardDetailsForm = document.getElementById('card-details-form');
     paymentRadios.forEach(radio => {
@@ -316,7 +308,6 @@ function displayCheckoutPage() {
             }
         });
     });
-    // --- КОНЕЦ БЛОКА: Логика выбора оплаты ---
 }
 async function handleCheckoutForm(e) {
     try {
