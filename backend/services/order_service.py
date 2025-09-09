@@ -36,7 +36,8 @@ def process_new_order(order: Order) -> dict:
         transaction_id=payment_result.get("transaction_id"),
         user_email=order.user_email,
         amount=server_total,
-        payment_method=order.payment_method
+        payment_method=order.payment_method,
+        admitad_uid=order.admitad_uid
     )
 
     # 4. Вызов сервиса трекинга
@@ -59,7 +60,8 @@ def process_event_registration(registration: EventRegistration) -> dict:
         order_id=registration_id,
         user_email=registration.user_email,
         amount=0.0,
-        payment_method="event_registration"
+        payment_method="event_registration",
+        admitad_uid=registration.admitad_uid
     )
 
     # Вызов сервиса трекинга

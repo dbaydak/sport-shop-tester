@@ -26,12 +26,14 @@ class Order(BaseModel):
     items: List[ProductInOrder]
     total_amount: float
     card_details: Optional[CardDetails] = None
+    admitad_uid: Optional[str] = None
 
 
 class EventRegistration(BaseModel):
     user_name: str
     user_email: EmailStr
     event_name: str
+    admitad_uid: Optional[str] = None
 
 
 class Transaction(BaseModel):
@@ -41,3 +43,4 @@ class Transaction(BaseModel):
     amount: float
     payment_method: str
     timestamp: datetime
+    admitad_uid: Optional[str] = None
