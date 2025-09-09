@@ -120,10 +120,9 @@ function fireTrackingPixel(details, onComplete) {
  * Configures the event registration form.
  */
 function setupEventForm() {
+    // Находим форму по ID
     const form = document.getElementById('event-form');
-    // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-    // Находим кнопку по ее ID для надежности
-    const form = document.getElementById('event-form');
+    // Добавляем обработчик на событие 'submit' самой формы
     if (form) {
         form.addEventListener('submit', handleEventForm);
     }
