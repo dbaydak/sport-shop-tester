@@ -34,12 +34,15 @@ app.include_router(api_router)
 def read_root():
     return {"message": "Welcome to the Sport Shop API"}
 
+
 @app.get("/api/categories")
 def get_categories():
     """
     Возвращает список всех уникальных категорий товаров.
     """
-    all_products = db.get_products()
+    # ИСПРАВЛЕНИЕ: Обращаемся напрямую к списку PRODUCTS_DB, а не к функции
+    all_products = db.PRODUCTS_DB
+
     # Используем множество (set) для автоматического получения уникальных значений
     unique_categories = sorted(list({p['category'] for p in all_products}))
     return unique_categories
