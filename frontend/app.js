@@ -264,16 +264,15 @@ function displayCartPage() {
     }
 }
 function displayCheckoutPage() {
+    // --- НАЧАЛО БЛОКА: Отрисовка корзины (этот код работает, оставляем его) ---
     const cart = getCart();
     const itemsSummaryContainer = document.getElementById('cart-items-summary');
     const totalAmountEl = document.getElementById('summary-total-amount');
 
-    // Блок, который отображает товары в корзине
     if (itemsSummaryContainer) {
-        itemsSummaryContainer.innerHTML = ''; // Очищаем "Загрузка товаров..."
+        itemsSummaryContainer.innerHTML = '';
         if (cart.length === 0) {
             itemsSummaryContainer.innerHTML = '<p>Ваша корзина пуста.</p>';
-            // Можно добавить логику, чтобы скрыть кнопку заказа, если корзина пуста
         } else {
             let total = 0;
             cart.forEach(item => {
@@ -283,20 +282,29 @@ function displayCheckoutPage() {
                 itemsSummaryContainer.appendChild(itemEl);
                 total += item.price * item.quantity;
             });
-
             if (totalAmountEl) {
                 totalAmountEl.textContent = total.toFixed(2);
             }
         }
     }
+    // --- КОНЕЦ БЛОКА: Отрисовка корзины ---
 
-    // Блок, который добавляет обработчик на кнопку "Оформить заказ"
+
+    // --- НОВЫЙ ОТЛАДОЧНЫЙ БЛОК ---
+    console.log("DEBUG: Пытаюсь найти форму заказа на странице...");
     const form = document.getElementById('checkout-form');
-    if (form) {
-        form.addEventListener('submit', handleCheckoutForm);
-    }
 
-    // Блок, отвечающий за логику выбора способа оплаты
+    if (form) {
+        console.log("DEBUG: Форма НАЙДЕНА. Прикрепляю обработчик 'submit'.", form);
+        form.addEventListener('submit', handleCheckoutForm);
+        console.log("DEBUG: Обработчик успешно прикреплён.");
+    } else {
+        console.error("DEBUG: КРИТИЧЕСКАЯ ОШИБКА! Элемент <form id='checkout-form'> НЕ НАЙДЕН на странице.");
+    }
+    // --- КОНЕЦ НОВОГО ОТЛАДОЧНОГО БЛОКА ---
+
+
+    // --- НАЧАЛО БЛОКА: Логика выбора оплаты (оставляем без изменений) ---
     const paymentRadios = document.querySelectorAll('input[name="payment"]');
     const cardDetailsForm = document.getElementById('card-details-form');
     paymentRadios.forEach(radio => {
@@ -308,57 +316,85 @@ function displayCheckoutPage() {
             }
         });
     });
+    // --- КОНЕЦ БЛОКА: Логика выбора оплаты ---
 }
-async function handleCheckoutForm() {
-    e.preventDefault();
-    const statusEl = document.getElementById('checkout-status');
-    const submitBtn = document.getElementById('submit-order-btn');
-    statusEl.textContent = 'Обрабатываем ваш заказ...';
-    submitBtn.disabled = true;
-
-    const cart = getCart();
-    const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const orderData = {
-        user_name: document.getElementById('user-name').value,
-        user_email: document.getElementById('user-email').value,
-        payment_method: document.querySelector('input[name="payment"]:checked').value,
-        items: cart, total_amount: totalAmount, card_details: null,
-        admitad_uid: getCookie('admitad_aid'),
-        deduplication_source: getCookie('deduplication_cookie')
-    };
-    if (orderData.payment_method === 'card') {
-        orderData.card_details = {
-            card_number: document.getElementById('card-number').value,
-            expiry_date: document.getElementById('expiry-date').value,
-            cvv: document.getElementById('cvv').value,
-            owner_name: document.getElementById('owner-name').value
-        };
-    }
+async function handleCheckoutForm(e) {
     try {
-        const response = await fetch(`${API_URL}/orders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(orderData) });
+        console.log("ШАГ 1: Начало обработки формы.");
+        e.preventDefault();
+
+        const statusEl = document.getElementById('checkout-status');
+        const submitBtn = document.getElementById('submit-order-btn');
+        statusEl.textContent = 'Обрабатываем ваш заказ...';
+        submitBtn.disabled = true;
+
+        console.log("ШАГ 2: Собираем данные для заказа.");
+        const cart = getCart();
+        if (cart.length === 0) {
+            console.error("ОШИБКА: Корзина пуста. Отправка отменена.");
+            statusEl.textContent = 'Ваша корзина пуста.';
+            submitBtn.disabled = false;
+            return;
+        }
+
+        const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+        const orderData = {
+            user_name: document.getElementById('user-name').value,
+            user_email: document.getElementById('user-email').value,
+            payment_method: document.querySelector('input[name="payment"]:checked').value,
+            items: cart,
+            total_amount: totalAmount,
+            card_details: null,
+            admitad_uid: getCookie('admitad_aid'),
+            deduplication_source: getCookie('deduplication_cookie')
+        };
+
+        console.log("ШАГ 3: Данные для заказа успешно собраны:", orderData);
+
+        if (orderData.payment_method === 'card') {
+            orderData.card_details = {
+                card_number: document.getElementById('card-number').value,
+                expiry_date: document.getElementById('expiry-date').value,
+                cvv: document.getElementById('cvv').value,
+                owner_name: document.getElementById('owner-name').value
+            };
+        }
+
+        console.log("ШАГ 4: Отправляем запрос на сервер...");
+        const response = await fetch(`${API_URL}/orders`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderData)
+        });
+
         const result = await response.json();
+
         if (response.ok) {
+            console.log("ШАГ 5: Сервер успешно обработал заказ.", result);
             sessionStorage.setItem('lastOrderDetails', JSON.stringify(result));
             localStorage.removeItem('cart');
 
-            // ВЫЗЫВАЕМ ПИКСЕЛЬ И ПЕРЕДАЕМ ПЕРЕХОД В КАЧЕСТВЕ CALLBACK
-            fireTrackingPixel(
-                {
-                    orderId: result.order_id,
-                    orderAmount: result.total_amount,
-                    paymentType: 'sale'
-                },
-                () => { window.location.href = 'confirmation.html'; }
-            );
+            fireTrackingPixel({
+                orderId: result.order_id,
+                orderAmount: result.total_amount,
+                paymentType: 'sale'
+            }, () => {
+                window.location.href = 'confirmation.html';
+            });
         } else {
-            throw new Error(result.detail || 'Неизвестная ошибка');
+            throw new Error(result.detail || 'Неизвестная ошибка сервера');
         }
     } catch (error) {
-        statusEl.textContent = `Ошибка оформления заказа: ${error.message}`;
-        submitBtn.disabled = false;
+        console.error("ОШИБКА НА ФИНАЛЬНОМ ЭТАПЕ:", error);
+        // Восстанавливаем состояние UI в случае ошибки
+        const statusEl = document.getElementById('checkout-status');
+        const submitBtn = document.getElementById('submit-order-btn');
+        if (statusEl) statusEl.textContent = `Ошибка оформления заказа: ${error.message}`;
+        if (submitBtn) submitBtn.disabled = false;
     }
 }
-async function handleEventForm() {
+async function handleEventForm(e) {
     e.preventDefault();
     const statusEl = document.getElementById('event-status');
     const submitBtn = document.getElementById('submit-event-btn');
