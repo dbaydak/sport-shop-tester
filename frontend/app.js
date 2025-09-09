@@ -268,17 +268,46 @@ function displayCheckoutPage() {
     const itemsSummaryContainer = document.getElementById('cart-items-summary');
     const totalAmountEl = document.getElementById('summary-total-amount');
 
+    // Блок, который отображает товары в корзине
     if (itemsSummaryContainer) {
-        // ... (здесь ваш код для отображения товаров, он остаётся без изменений)
+        itemsSummaryContainer.innerHTML = ''; // Очищаем "Загрузка товаров..."
+        if (cart.length === 0) {
+            itemsSummaryContainer.innerHTML = '<p>Ваша корзина пуста.</p>';
+            // Можно добавить логику, чтобы скрыть кнопку заказа, если корзина пуста
+        } else {
+            let total = 0;
+            cart.forEach(item => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'summary-item';
+                itemEl.innerHTML = `<span>${item.name} (x${item.quantity})</span><span>${(item.price * item.quantity).toFixed(2)} руб.</span>`;
+                itemsSummaryContainer.appendChild(itemEl);
+                total += item.price * item.quantity;
+            });
+
+            if (totalAmountEl) {
+                totalAmountEl.textContent = total.toFixed(2);
+            }
+        }
     }
 
+    // Блок, который добавляет обработчик на кнопку "Оформить заказ"
     const form = document.getElementById('checkout-form');
     if (form) {
-        // Правильно: отслеживаем отправку всей формы
         form.addEventListener('submit', handleCheckoutForm);
     }
 
-    // ... (остальной код функции также без изменений)
+    // Блок, отвечающий за логику выбора способа оплаты
+    const paymentRadios = document.querySelectorAll('input[name="payment"]');
+    const cardDetailsForm = document.getElementById('card-details-form');
+    paymentRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (radio.value === 'card' && radio.checked) {
+                cardDetailsForm.classList.remove('hidden');
+            } else {
+                cardDetailsForm.classList.add('hidden');
+            }
+        });
+    });
 }
 async function handleCheckoutForm() {
     e.preventDefault();
