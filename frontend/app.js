@@ -110,7 +110,7 @@ function fireTrackingPixel(details, onComplete) {
 
     // Дополнительная защита: если за 1.5 секунды ничего не произошло,
     // все равно переходим на страницу.
-    setTimeout(doRedirect, 1500);
+    setTimeout(doRedirect, 2500);
 }
 
 /**
