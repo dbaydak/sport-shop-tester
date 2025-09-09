@@ -77,40 +77,22 @@ function getCookie(name) {
  * @param {number} orderAmount - Сумма заказа.
  * @param {string} paymentType - 'sale' для покупки, 'lead' для записи.
  */
-function fireTrackingPixel(details, onComplete) {
+function fireTrackingPixel(details) {
     const { orderId, orderAmount, paymentType } = details;
     const admitadUid = getCookie('admitad_aid');
 
     if (!admitadUid) {
-        console.warn('Admitad UID не найден, пиксель не отправлен. Выполняется немедленный переход.');
-        onComplete();
+        console.warn('Admitad UID не найден, пиксель не отправляется.');
         return;
     }
 
     const channel = getCookie('deduplication_cookie') || 'direct';
-    console.log(`Подготовка пикселя: ID=${orderId}, Сумма=${orderAmount}, UID=${admitadUid}, Канал=${channel}`);
+    console.log(`Запуск пикселя: ID=${orderId}, Сумма=${orderAmount}, UID=${admitadUid}, Канал=${channel}`);
 
     const pixel = new Image();
-    let redirectHasOccurred = false;
-    const doRedirect = () => {
-        if (!redirectHasOccurred) {
-            redirectHasOccurred = true;
-            console.log("Пиксель отправлен (или ошибка), выполняется переход.");
-            onComplete();
-        }
-    };
-
-    // Навешиваем обработчики, которые вызовут переход ПОСЛЕ отправки
-    pixel.onload = doRedirect;
-    pixel.onerror = doRedirect;
-
     pixel.src = `https://ad.admitad.com/tt?order_id=${orderId}&campaign_code=8817907101&action_code=1&uid=${admitadUid}&tariff_code=1&payment_type=${paymentType}&order_sum=${orderAmount}&channel=${channel}&rt=img&adm_method=imgpixel`;
     pixel.style.display = 'none';
     document.body.appendChild(pixel);
-
-    // Дополнительная защита: если за 1.5 секунды ничего не произошло,
-    // все равно переходим на страницу.
-    setTimeout(doRedirect, 2500);
 }
 
 /**
@@ -309,83 +291,81 @@ function displayCheckoutPage() {
         });
     });
 }
-async function handleCheckoutForm(e) {
-    try {
-        console.log("ШАГ 1: Начало обработки формы.");
-        e.preventDefault();
+function handleCheckoutForm(e) {
+    e.preventDefault();
+    console.log("НАЧАТА ОТПРАВКА ФОРМЫ (новый, стабильный обработчик)...");
 
-        const statusEl = document.getElementById('checkout-status');
-        const submitBtn = document.getElementById('submit-order-btn');
-        statusEl.textContent = 'Обрабатываем ваш заказ...';
-        submitBtn.disabled = true;
+    const statusEl = document.getElementById('checkout-status');
+    const submitBtn = document.getElementById('submit-order-btn');
+    statusEl.textContent = 'Обрабатываем ваш заказ...';
+    submitBtn.disabled = true;
 
-        console.log("ШАГ 2: Собираем данные для заказа.");
-        const cart = getCart();
-        if (cart.length === 0) {
-            console.error("ОШИБКА: Корзина пуста. Отправка отменена.");
-            statusEl.textContent = 'Ваша корзина пуста.';
-            submitBtn.disabled = false;
-            return;
-        }
-
-        const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-        const orderData = {
-            user_name: document.getElementById('user-name').value,
-            user_email: document.getElementById('user-email').value,
-            payment_method: document.querySelector('input[name="payment"]:checked').value,
-            items: cart,
-            total_amount: totalAmount,
-            card_details: null,
-            admitad_uid: getCookie('admitad_aid'),
-            deduplication_source: getCookie('deduplication_cookie')
-        };
-
-        console.log("ШАГ 3: Данные для заказа успешно собраны:", orderData);
-
-        if (orderData.payment_method === 'card') {
-            orderData.card_details = {
-                card_number: document.getElementById('card-number').value,
-                expiry_date: document.getElementById('expiry-date').value,
-                cvv: document.getElementById('cvv').value,
-                owner_name: document.getElementById('owner-name').value
-            };
-        }
-
-        console.log("ШАГ 4: Отправляем запрос на сервер...");
-        const response = await fetch(`${API_URL}/orders`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(orderData)
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            console.log("ШАГ 5: Сервер успешно обработал заказ.", result);
-            sessionStorage.setItem('lastOrderDetails', JSON.stringify(result));
-            localStorage.removeItem('cart');
-
-            fireTrackingPixel({
-                orderId: result.order_id,
-                orderAmount: result.total_amount,
-                paymentType: 'sale'
-            }, () => {
-                window.location.href = 'confirmation.html';
-            });
-        } else {
-            throw new Error(result.detail || 'Неизвестная ошибка сервера');
-        }
-    } catch (error) {
-        console.error("ОШИБКА НА ФИНАЛЬНОМ ЭТАПЕ:", error);
-        // Восстанавливаем состояние UI в случае ошибки
-        const statusEl = document.getElementById('checkout-status');
-        const submitBtn = document.getElementById('submit-order-btn');
-        if (statusEl) statusEl.textContent = `Ошибка оформления заказа: ${error.message}`;
-        if (submitBtn) submitBtn.disabled = false;
+    const cart = getCart();
+    if (cart.length === 0) {
+        statusEl.textContent = 'Ваша корзина пуста.';
+        submitBtn.disabled = false;
+        return;
     }
+    const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const orderData = {
+        user_name: document.getElementById('user-name').value,
+        user_email: document.getElementById('user-email').value,
+        payment_method: document.querySelector('input[name="payment"]:checked').value,
+        items: cart,
+        total_amount: totalAmount,
+        card_details: null,
+        admitad_uid: getCookie('admitad_aid'),
+        deduplication_source: getCookie('deduplication_cookie')
+    };
+    if (orderData.payment_method === 'card') {
+        orderData.card_details = {
+            card_number: document.getElementById('card-number').value,
+            expiry_date: document.getElementById('expiry-date').value,
+            cvv: document.getElementById('cvv').value,
+            owner_name: document.getElementById('owner-name').value
+        };
+    }
+
+    // --- ЯВНАЯ ЦЕПОЧКА ПРОМИСОВ ---
+    fetch(`${API_URL}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+    })
+    .then(response => {
+        // Шаг A: Проверяем, успешен ли ответ. Если нет - проваливаемся в .catch
+        if (!response.ok) {
+            return response.json().then(err => { throw new Error(err.detail || 'Неизвестная ошибка сервера') });
+        }
+        return response.json(); // Если всё хорошо, передаём данные дальше
+    })
+    .then(result => {
+        // Шаг B: Этот блок выполняется ТОЛЬКО при успешном ответе 200 OK
+        console.log("УСПЕХ: Сервер вернул данные:", result);
+        if (!result || !result.order_id) {
+            throw new Error("Сервер вернул некорректный успешный ответ.");
+        }
+        // 1. Сохраняем данные и чистим корзину
+        sessionStorage.setItem('lastOrderDetails', JSON.stringify(result));
+        localStorage.removeItem('cart');
+        // 2. Запускаем пиксель (он будет работать независимо)
+        fireTrackingPixel({
+            orderId: result.order_id,
+            orderAmount: result.total_amount,
+            paymentType: 'sale'
+        });
+        // 3. Гарантированно перенаправляем пользователя
+        console.log("ПЕРЕНАПРАВЛЕНИЕ на страницу подтверждения...");
+        window.location.href = 'confirmation.html';
+    })
+    .catch(error => {
+        // Шаг C: Этот блок ловит ЛЮБУЮ ошибку на всех предыдущих шагах
+        console.error("ОШИБКА ПРИ ОТПРАВКЕ ЗАКАЗА:", error);
+        statusEl.textContent = `Ошибка: ${error.message}`;
+        submitBtn.disabled = false;
+    });
 }
-async function handleEventForm(e) {
+function handleEventForm(e) {
     e.preventDefault();
     const statusEl = document.getElementById('event-status');
     const submitBtn = document.getElementById('submit-event-btn');
@@ -400,42 +380,39 @@ async function handleEventForm(e) {
         deduplication_source: getCookie('deduplication_cookie')
     };
 
-    // Простая проверка на заполненность полей
     if (!eventData.user_name || !eventData.user_email || !eventData.event_name) {
         statusEl.textContent = 'Пожалуйста, заполните все поля.';
         submitBtn.disabled = false;
         return;
     }
 
-    try {
-        // Предполагаем, что API эндпоинт для регистрации - /registrations
-        const response = await fetch(`${API_URL}/register-event`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(eventData)
-        });
-        const result = await response.json();
-
-        if (response.ok) {
-            // Сохраняем детали для страницы подтверждения
-            sessionStorage.setItem('lastEventRegistration', JSON.stringify(result));
-
-            // ВЫЗЫВАЕМ ПИКСЕЛЬ И ПЕРЕДАЕМ ПЕРЕХОД В КАЧЕСТВЕ CALLBACK
-            fireTrackingPixel(
-                {
-                    orderId: result.registration_id,
-                    orderAmount: 0, // Сумма для "лида" равна 0
-                    paymentType: 'lead'
-                },
-                () => { window.location.href = 'event-confirmation.html'; } // Переход после отправки пикселя
-            );
-        } else {
-            throw new Error(result.detail || 'Неизвестная ошибка сервера');
+    fetch(`${API_URL}/registrations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw new Error(err.detail || 'Неизвестная ошибка сервера') });
         }
-    } catch (error) {
+        return response.json();
+    })
+    .then(result => {
+        if (!result || !result.registration_id) {
+            throw new Error("Сервер вернул некорректный успешный ответ.");
+        }
+        sessionStorage.setItem('lastEventRegistration', JSON.stringify(result));
+        fireTrackingPixel({
+            orderId: result.registration_id,
+            orderAmount: 0,
+            paymentType: 'lead'
+        });
+        window.location.href = 'event-confirmation.html';
+    })
+    .catch(error => {
         statusEl.textContent = `Ошибка при записи: ${error.message}`;
         submitBtn.disabled = false;
-    }
+    });
 }
 function displayConfirmationDetails() {
     const container = document.getElementById('confirmation-details');
