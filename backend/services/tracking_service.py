@@ -9,7 +9,7 @@ def send_postback_to_admitad(transaction: dict):
     params = {
         "order_id": transaction.get("order_id"),
         "postback_key": "ed2Dd5f96a1b1a762b712D87CE925C6f",
-        "action_code": "1",
+        "action_code": "5",
         "uid": "testlocal",
         "tariff_code": "1",
         "payment_type": "lead" if transaction.get("amount") == 0 else "sale",
