@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оформление заказа - Не Спортивный</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="container">
+        <header id="header-placeholder"></header>
+
+        <main>
+            <div class="checkout-layout">
+                <!-- Левая колонка: Форма оформления -->
+                <div class="form-card">
+                    <h2>Оформление заказа</h2>
+                    <form id="checkout-form">
+
+                        <!-- Секция с данными покупателя -->
+                        <div class="form-section">
+                            <h4>Контактные данные</h4>
+                            <label for="user-name">Ваше имя</label>
+                            <input type="text" id="user-name" name="user-name" required placeholder="Иван Иванов">
+
+                            <label for="user-email">Email</label>
+                            <input type="email" id="user-email" name="user-email" required placeholder="ivanov@example.com">
+                        </div>
+
+                        <!-- Секция выбора способа оплаты -->
+                        <div class="form-section">
+                            <h4>Способ оплаты</h4>
+                            <div class="payment-options">
+                                <label>
+                                    <input type="radio" name="payment" value="cash" checked> Оплата при получении
+                                </label>
+                                <label>
+                                    <input type="radio" name="payment" value="card"> Банковской картой
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Скрытая секция для данных карты -->
+                        <div id="card-details-form" class="hidden">
+                            <h4>Данные банковской карты</h4>
+                            <p><small>Используйте тестовые данные: 1234567812345678, 12/28, 123, IVAN IVANOV</small></p>
+                            <label for="card-number">Номер карты</label>
+                            <input type="text" id="card-number" placeholder="0000 0000 0000 0000">
+
+                            <label for="expiry-date">Срок действия (ММ/ГГ)</label>
+                            <input type="text" id="expiry-date" placeholder="12/28">
+
+                            <label for="cvv">CVV</label>
+                            <input type="text" id="cvv" placeholder="123">
+
+                            <label for="owner-name">Имя владельца</label>
+                            <input type="text" id="owner-name" placeholder="IVAN IVANOV">
+                        </div>
+
+                        <hr>
+
+                        <button type="button" id="submit-order-btn" class="button button-primary">Оформить заказ</button>
+                        <p id="checkout-status" class="status-message"></p>
+                    </form>
+                </div>
+
+                <!-- Правая колонка: Сводка по заказу -->
+                <div class="form-card">
+                    <h3>Ваш заказ</h3>
+                    <div id="cart-items-summary">
+                        <!-- Товары из корзины будут вставлены сюда скриптом -->
+                        <div class="loader">Загрузка товаров...</div>
+                    </div>
+                    <hr>
+                    <div class="summary-total">
+                        <strong>Итого: <span id="summary-total-amount">0.00</span> руб.</strong>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="components.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

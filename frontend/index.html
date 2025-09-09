@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тестовый Спортивный Магазин</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body id="page-index">
+    <div class="container">
+        <header id="header-placeholder"></header>
+        
+        <main>
+            <h2>Категории товаров</h2>
+            <div id="categories-container" class="categories-grid">
+                <div class="loader">Загрузка категорий...</div>
+            </div>
+            <hr>
+            <div class="event-section form-card" id="event-form-container">
+                 <h2>Запись на мероприятия</h2>
+                 <form id="event-form">
+                     <input type="text" id="event-user-name" placeholder="Ваше имя" required>
+                     <input type="email" id="event-user-email" placeholder="Ваш Email" required>
+                     <select id="event-name" required>
+                         <option value="" disabled selected>Выберите мероприятие</option>
+                         <option value="Марафон 5км">Марафон 5км</option>
+                         <option value="Групповая йога">Групповая йога</option>
+                         <option value="Занятие по кроссфиту">Занятие по кроссфиту</option>
+                     </select>
+                     <button type="button" id="submit-event-btn" class="button button-primary">Записаться</button>
+                     <p id="event-status" class="status-message"></p>
+                 </form>
+            </div>
+        </main>
+    </div>
+
+    <script src="components.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

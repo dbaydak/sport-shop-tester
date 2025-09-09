@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заказ подтвержден - Не Спортивный</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="container">
+        <header id="header-placeholder"></header>
+
+        <main>
+            <div id="confirmation-details" class="confirmation-card">
+                <!-- Содержимое будет вставлено с помощью JavaScript -->
+                <div class="loader">Загрузка информации о заказе...</div>
+            </div>
+
+            <!--
+            ====================================================================
+            !!! ВАЖНОЕ МЕСТО ДЛЯ ТРЕКИНГА !!!
+
+            Именно здесь вы будете размещать скрипт или пиксель вашей
+            аффилиатной сети.
+
+            Вы можете создать тег <script> и внутри него получить
+            данные заказа (id, сумму) и отправить их в трекинговую систему.
+            Например:
+
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    const orderDetails = JSON.parse(sessionStorage.getItem('trackingOrderDetails'));
+                    if (orderDetails) {
+                        console.log('Отправляем данные в трекинговую систему:', orderDetails);
+
+                        // Пример вызова функции трекинга
+                        // trackConversion(orderDetails.order_id, orderDetails.total_amount);
+
+                        // Пример вставки пикселя с параметрами
+                        // const img = new Image();
+                        // img.src = `https://track.affiliate.net/sale?order_id=${orderDetails.order_id}&amount=${orderDetails.total_amount}`;
+                        // document.body.appendChild(img);
+                    }
+                });
+            </script>
+            ====================================================================
+            -->
+
+        </main>
+    </div>
+    <script src="components.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

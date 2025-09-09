@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ваша корзина</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body id="page-cart">
+    <div class="container">
+        <header id="header-placeholder"></header>
+        <main>
+            <h2>Ваша корзина</h2>
+            <div class="cart-layout">
+                <div class="form-card">
+                    <div id="cart-page-items">
+                        <div class="loader">Загрузка корзины...</div>
+                    </div>
+                    <div id="empty-cart-message" class="hidden">
+                        <p>Ваша корзина пуста. <a href="index.html">Перейти к покупкам?</a></p>
+                    </div>
+                </div>
+                <div id="cart-actions" class="form-card">
+                    <h3>Сумма заказа</h3>
+                    <div class="summary-total">
+                        <strong>Итого: <span id="cart-page-total">0.00</span> руб.</strong>
+                    </div>
+                    <hr>
+                    <a href="checkout.html" class="button button-primary">Оформить заказ</a>
+                    <button onclick="clearCart()" class="button-danger" style="width: 100%; margin-top: 10px;">Очистить корзину</button>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="components.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
