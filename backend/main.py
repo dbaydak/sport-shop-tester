@@ -9,7 +9,12 @@ from api import products, transactions, orders, events
 
 # --- Настройка приложения и CORS ---
 app = FastAPI(title="Sport Shop Test API")
-origins = ["http://localhost", "http://127.0.0.1", "http://127.0.0.1:5500", "null"]
+origins = [
+    "http://localhost",
+    "http://127.0.0.1",
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+    "null"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,

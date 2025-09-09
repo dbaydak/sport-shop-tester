@@ -120,15 +120,10 @@ function fireTrackingPixel(details, onComplete) {
  * Configures the event registration form.
  */
 function setupEventForm() {
-    // Находим форму по ID
-    const submitBtn = document.getElementById('submit-event-btn');
-    if (submitBtn) {
-        submitBtn.addEventListener('click', function(e) {
-            // Явно предотвращаем стандартное поведение
-            e.preventDefault();
-            // Вызываем нашу асинхронную функцию
-            handleEventForm();
-        });
+    const form = document.getElementById('event-form');
+    if (form) {
+        // Правильно: отслеживаем отправку всей формы
+        form.addEventListener('submit', handleEventForm);
     }
 }
 // ====================================================================
@@ -271,18 +266,19 @@ function displayCartPage() {
 function displayCheckoutPage() {
     const cart = getCart();
     const itemsSummaryContainer = document.getElementById('cart-items-summary');
-    // ... (остальной код отображения товаров без изменений) ...
+    const totalAmountEl = document.getElementById('summary-total-amount');
 
-    // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-    // Возвращаем правильный обработчик для кнопки ОФОРМЛЕНИЯ ЗАКАЗА
-    const submitBtn = document.getElementById('submit-order-btn');
-if (submitBtn) {
-    submitBtn.addEventListener('click', function(e) {
-        // Явно предотвращаем стандартное поведение кнопки внутри формы
-        e.preventDefault();
-        // Вызываем нашу асинхронную функцию для обработки
-        handleCheckoutForm();
-    });
+    if (itemsSummaryContainer) {
+        // ... (здесь ваш код для отображения товаров, он остаётся без изменений)
+    }
+
+    const form = document.getElementById('checkout-form');
+    if (form) {
+        // Правильно: отслеживаем отправку всей формы
+        form.addEventListener('submit', handleCheckoutForm);
+    }
+
+    // ... (остальной код функции также без изменений)
 }
 async function handleCheckoutForm() {
     e.preventDefault();
