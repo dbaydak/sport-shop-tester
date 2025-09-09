@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRouter
 
+from backend import db
+
 # Импортируем все наши роутеры из папки api
 from api import products, transactions, orders, events
 
@@ -31,3 +33,13 @@ app.include_router(api_router)
 @app.get("/", summary="Корневой эндпоинт для проверки работы")
 def read_root():
     return {"message": "Welcome to the Sport Shop API"}
+
+@app.get("/api/categories")
+def get_categories():
+    """
+    Возвращает список всех уникальных категорий товаров.
+    """
+    all_products = db.get_products()
+    # Используем множество (set) для автоматического получения уникальных значений
+    unique_categories = sorted(list({p['category'] for p in all_products}))
+    return unique_categories
