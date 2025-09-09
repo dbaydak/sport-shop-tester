@@ -14,4 +14,4 @@ __pycache__/
 .vscode/
 
 # Transactions file (contains sensitive user data)
-transactions.json
+backend/transactions.json

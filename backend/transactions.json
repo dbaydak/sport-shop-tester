@@ -84,5 +84,12 @@
         "amount": 990.0,
         "payment_method": "card",
         "timestamp": "2025-09-09 22:39:53.281772"
+    },
+    {
+        "order_id": 10491,
+        "user_email": "test@test.com",
+        "amount": 0.0,
+        "payment_method": "event_registration",
+        "timestamp": "2025-09-09 22:47:07.736122"
     }
 ]

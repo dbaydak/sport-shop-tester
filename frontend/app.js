@@ -90,7 +90,7 @@ function fireTrackingPixel(details) {
     console.log(`Запуск пикселя: ID=${orderId}, Сумма=${orderAmount}, UID=${admitadUid}, Канал=${channel}`);
 
     const pixel = new Image();
-    pixel.src = `https://ad.admitad.com/tt?order_id=${orderId}&campaign_code=8817907101&action_code=1&uid=${admitadUid}&tariff_code=1&payment_type=${paymentType}&price=${orderAmount}&channel=${channel}&rt=img&adm_method=imgpixel`;
+    pixel.src = `https://ad.admitad.com/tt?order_id=${orderId}&campaign_code=8817907101&action_code=5&uid=${admitadUid}&tariff_code=1&payment_type=${paymentType}&price=${orderAmount}&channel=${channel}&rt=img&adm_method=imgpixel`;
     pixel.style.display = 'none';
     document.body.appendChild(pixel);
 }
