@@ -1,46 +1,26 @@
 import json
+import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Тестовые данные для симуляции банковской карты
 TEST_CARD_DATA = {
-    "card_number": "1234567812345678",
-    "expiry_date": "12/28",
-    "cvv": "123",
-    "owner_name": "IVAN IVANOV"
+    "card_number": os.getenv("TEST_CARD_NUMBER"),
+    "expiry_date": os.getenv("TEST_CARD_EXPIRY"),
+    "cvv": os.getenv("TEST_CARD_CVV"),
+    "owner_name": os.getenv("TEST_CARD_OWNER")
 }
 
-# Симуляция таблицы товаров в базе данных
-PRODUCTS_DB = [
-    {
-        "id": 1,
-        "name": "Беговые кроссовки ProRun",
-        "category": "Обувь",
-        "description": "Легкие и удобные кроссовки для профессионального бега.",
-        "price": 8500.00
-    },
-    {
-        "id": 2,
-        "name": "Фитнес-трекер SmartBand 5",
-        "category": "Гаджеты",
-        "description": "Отслеживайте свою активность и пульс 24/7.",
-        "price": 3200.00
-    },
-    {
-        "id": 3,
-        "name": "Футболка для тренировок DryFit",
-        "category": "Одежда",
-        "description": "Отводит влагу и сохраняет комфорт.",
-        "price": 2500.00
-    },
-    {
-        "id": 4,
-        "name": "Бутылка для воды (750 мл)",
-        "category": "Аксессуары",
-        "description": "Эргономичная бутылка, не содержит BPA.",
-        "price": 990.00
-    },
-    # Добавьте еще 15-16 товаров по аналогии
-]
+def load_products_from_json():
+    """Загружает список товаров из JSON файла."""
+    products_file = Path(__file__).parent / "products.json"
+    with open(products_file, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+PRODUCTS_DB = load_products_from_json()
+
 
 # Симуляция таблицы для записи на мероприятия
 EVENT_REGISTRATIONS = []

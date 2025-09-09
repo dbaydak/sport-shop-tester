@@ -90,7 +90,7 @@ function fireTrackingPixel(details) {
     console.log(`Запуск пикселя: ID=${orderId}, Сумма=${orderAmount}, UID=${admitadUid}, Канал=${channel}`);
 
     const pixel = new Image();
-    pixel.src = `https://ad.admitad.com/tt?order_id=${orderId}&campaign_code=8817907101&action_code=1&uid=${admitadUid}&tariff_code=1&payment_type=${paymentType}&order_sum=${orderAmount}&channel=${channel}&rt=img&adm_method=imgpixel`;
+    pixel.src = `https://ad.admitad.com/tt?order_id=${orderId}&campaign_code=8817907101&action_code=1&uid=${admitadUid}&tariff_code=1&payment_type=${paymentType}&price=${orderAmount}&channel=${channel}&rt=img&adm_method=imgpixel`;
     pixel.style.display = 'none';
     document.body.appendChild(pixel);
 }
@@ -356,7 +356,9 @@ function handleCheckoutForm(e) {
         });
         // 3. Гарантированно перенаправляем пользователя
         console.log("ПЕРЕНАПРАВЛЕНИЕ на страницу подтверждения...");
+        setTimeout(() => {
         window.location.href = 'confirmation.html';
+        }, 300); // Даём пикселю 300 мс на отправку
     })
     .catch(error => {
         // Шаг C: Этот блок ловит ЛЮБУЮ ошибку на всех предыдущих шагах
@@ -407,7 +409,9 @@ function handleEventForm(e) {
             orderAmount: 0,
             paymentType: 'lead'
         });
+        setTimeout(() => {
         window.location.href = 'event-confirmation.html';
+        }, 300); // Даём пикселю 300 мс на отправку
     })
     .catch(error => {
         statusEl.textContent = `Ошибка при записи: ${error.message}`;

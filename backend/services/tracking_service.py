@@ -8,12 +8,12 @@ def send_postback_to_admitad(transaction: dict):
     postback_url = "https://ad.admitad.com/r"
     params = {
         "order_id": transaction.get("order_id"),
-        "campaign_code": "8817907101",
+        "postback_key": "ed2Dd5f96a1b1a762b712D87CE925C6f",
         "action_code": "1",
         "uid": "testlocal",
         "tariff_code": "1",
         "payment_type": "lead" if transaction.get("amount") == 0 else "sale",
-        "order_sum": transaction.get("amount"),
+        "price": transaction.get("amount"),
         "server_side_postback": "1"
     }
 

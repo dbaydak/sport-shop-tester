@@ -1,0 +1,17 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE-specific files
+.idea/
+.vscode/
+
+# Transactions file (contains sensitive user data)
+transactions.json

@@ -1,5 +1,8 @@
-fastapi
-uvicorn[standard]
-python-multipart
-pydantic[email]
-requests
+# Web Framework
+fastapi==0.111.0
+
+# ASGI Server
+uvicorn[standard]==0.29.0
+
+# HTTP Client
+requests==2.31.0
