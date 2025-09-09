@@ -121,10 +121,14 @@ function fireTrackingPixel(details, onComplete) {
  */
 function setupEventForm() {
     // Находим форму по ID
-    const form = document.getElementById('event-form');
-    // Добавляем обработчик на событие 'submit' самой формы
-    if (form) {
-        form.addEventListener('submit', handleEventForm);
+    const submitBtn = document.getElementById('submit-event-btn');
+    if (submitBtn) {
+        submitBtn.addEventListener('click', function(e) {
+            // Явно предотвращаем стандартное поведение
+            e.preventDefault();
+            // Вызываем нашу асинхронную функцию
+            handleEventForm();
+        });
     }
 }
 // ====================================================================
@@ -271,12 +275,16 @@ function displayCheckoutPage() {
 
     // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
     // Возвращаем правильный обработчик для кнопки ОФОРМЛЕНИЯ ЗАКАЗА
-    const form = document.getElementById('checkout-form');
-    if (form) {
-        form.addEventListener('submit', handleCheckoutForm);
-    }
+    const submitBtn = document.getElementById('submit-order-btn');
+if (submitBtn) {
+    submitBtn.addEventListener('click', function(e) {
+        // Явно предотвращаем стандартное поведение кнопки внутри формы
+        e.preventDefault();
+        // Вызываем нашу асинхронную функцию для обработки
+        handleCheckoutForm();
+    });
 }
-async function handleCheckoutForm(e) {
+async function handleCheckoutForm() {
     e.preventDefault();
     const statusEl = document.getElementById('checkout-status');
     const submitBtn = document.getElementById('submit-order-btn');
@@ -325,7 +333,7 @@ async function handleCheckoutForm(e) {
         submitBtn.disabled = false;
     }
 }
-async function handleEventForm(e) {
+async function handleEventForm() {
     e.preventDefault();
     const statusEl = document.getElementById('event-status');
     const submitBtn = document.getElementById('submit-event-btn');
