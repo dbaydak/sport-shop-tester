@@ -1,12 +1,11 @@
 // --- ГЛОБАЛЬНЫЙ СКРИПТ ДЛЯ ТРЕКИНГА (выполняется на каждой странице) ---
+/*
 (function() {
     // --- НАСТРОЙКИ ---
     const DEDUPLICATION_COOKIE_NAME = 'deduplication_cookie'; // Имя cookie для источника
     const UID_COOKIE_NAME = 'admitad_aid'; // Имя cookie для ID Admitad
     const COOKIE_LIFETIME_DAYS = 90; // Время жизни cookie в днях
-    /**
-     * Устанавливает cookie с заданным именем, значением и сроком жизни.
-     */
+    // Устанавливает cookie с заданным именем, значением и сроком жизни.
     function setCookie(name, value, days) {
         if (!value) return; // Не устанавливаем пустые cookie
         let expires = "";
@@ -18,9 +17,7 @@
         const domain = "; domain=." + window.location.hostname.replace(/^www\./i, "");
         document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/" + domain;
     }
-    /**
-     * Получает значение параметра из URL.
-     */
+    // Получает значение параметра из URL.
     function getParamFromURL(paramName) {
         const params = new URLSearchParams(window.location.search);
         return params.get(paramName);
@@ -39,6 +36,89 @@
     setCookie(DEDUPLICATION_COOKIE_NAME, source, COOKIE_LIFETIME_DAYS);
 })();
 // --- КОНЕЦ ГЛОБАЛЬНОГО СКРИПТА ДЛЯ ТРЕКИНГА ---
+*/
+
+// Финальная версия файла: assets/tracker.js
+(function() {
+    'use strict';
+
+    // --- Настройки ---
+    const UID_COOKIE_NAME = 'admitad_aid';
+    const DEDUPLICATION_COOKIE_NAME = 'deduplication_adm';
+    const COOKIE_LIFETIME_DAYS = 90;
+
+    // --- Вспомогательные функции ---
+    function setCookie(name, value, days) {
+        if (!value) return;
+        let expires = "";
+        if (days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        const domain = "; domain=." + window.location.hostname.replace(/^www\./i, "");
+        document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/" + domain;
+    }
+
+    function getParamFromURL(paramName) {
+        const params = new URLSearchParams(window.location.search);
+        return params.get(paramName);
+    }
+
+    // --- Логика при загрузке скрипта ---
+    const params = new URLSearchParams(window.location.search);
+    const admitadUid = params.get('admitad_uid');
+    if (admitadUid) {
+        setCookie(UID_COOKIE_NAME, admitadUid, COOKIE_LIFETIME_DAYS);
+    }
+    let source = getParamFromURL('utm_source');
+    if (!source) {
+        if (getParamFromURL('gclid')) source = 'google';
+        else if (getParamFromURL('fbclid')) source = 'facebook';
+        else if (getParamFromURL('cjevent')) source = 'cj';
+    }
+    if (source) {
+        setCookie(DEDUPLICATION_COOKIE_NAME, source, COOKIE_LIFETIME_DAYS);
+    }
+
+    // --- Создаём глобальный объект трекера ---
+    window.admitadTracker = {
+        track: function(type, data) {
+            // --- ЛОГИКА ОТПРАВКИ FETCH-ЗАПРОСА ---
+            const payload = {
+                orderId: String(data.orderId),
+                orderAmount: Number(data.orderAmount),
+                paymentType: type // 'sale' или 'lead'
+            };
+
+            console.log('[Admitad Tracker] Отправка события на API-шлюз:', payload);
+
+            // Отправляем запрос на ВАШ API-шлюз
+            fetch('/api/track-conversion', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                // credentials: 'include' ВАЖНО: эта опция гарантирует,
+                // что браузер отправит cookie (включая admitad_aid) вместе с запросом
+                credentials: 'include',
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('[Admitad Tracker] Событие успешно отправлено на сервер.');
+                } else {
+                    console.error('[Admitad Tracker] Сервер вернул ошибку при отправке события.');
+                }
+            })
+            .catch(error => {
+                console.error('[Admitad Tracker] Ошибка сети при отправке события:', error);
+            });
+        }
+    };
+
+    console.log('[Admitad Tracker] Скрипт успешно инициализирован.');
+})();
 
 // Global constant for the backend URL
 const API_URL = 'http://127.0.0.1:8000/api';
@@ -348,17 +428,27 @@ function handleCheckoutForm(e) {
         // 1. Сохраняем данные и чистим корзину
         sessionStorage.setItem('lastOrderDetails', JSON.stringify(result));
         localStorage.removeItem('cart');
-        // 2. Запускаем пиксель (он будет работать независимо)
+
+        // 2. ОТПРАВЛЯЕМ ДАННЫЕ В ГИБРИДНЫЙ ТРЕКЕР (Fetch POST на шлюз)
+        if (window.admitadTracker) {
+            window.admitadTracker.track('sale', {
+                orderId: result.order_id,
+                orderAmount: result.total_amount
+            });
+        }
+
+        // 3. ОТПРАВЛЯЕМ ДАННЫЕ В СТАРЫЙ ПИКСЕЛЬНЫЙ ТРЕКЕР (IMG-пиксель)
+        // Убедитесь, что fireTrackingPixel доступна и правильно настроена
         fireTrackingPixel({
             orderId: result.order_id,
             orderAmount: result.total_amount,
             paymentType: 'sale'
         });
-        // 3. Гарантированно перенаправляем пользователя
-        console.log("ПЕРЕНАПРАВЛЕНИЕ на страницу подтверждения...");
+
+        // 4. Перенаправляем пользователя
         setTimeout(() => {
-        window.location.href = 'confirmation.html';
-        }, 300); // Даём пикселю 300 мс на отправку
+            window.location.href = 'confirmation.html';
+        }, 300); // Небольшая задержка
     })
     .catch(error => {
         // Шаг C: Этот блок ловит ЛЮБУЮ ошибку на всех предыдущих шагах
@@ -404,6 +494,17 @@ function handleEventForm(e) {
             throw new Error("Сервер вернул некорректный успешный ответ.");
         }
         sessionStorage.setItem('lastEventRegistration', JSON.stringify(result));
+
+        // ОТПРАВЛЯЕМ ДАННЫЕ В ГИБРИДНЫЙ ТРЕКЕР (Fetch POST на шлюз)
+        if (window.admitadTracker) {
+            window.admitadTracker.track('lead', {
+                orderId: result.registration_id,
+                orderAmount: 0
+            });
+        }
+
+        // ОТПРАВЛЯЕМ ДАННЫЕ В СТАРЫЙ ПИКСЕЛЬНЫЙ ТРЕКЕР (IMG-пиксель)
+        // Убедитесь, что fireTrackingPixel доступна и правильно настроена
         fireTrackingPixel({
             orderId: result.registration_id,
             orderAmount: 0,
