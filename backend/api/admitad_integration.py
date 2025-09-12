@@ -62,6 +62,7 @@ async def track_conversion(event: TrackingEvent, request: Request):
 
         postback_url = "https://ad.admitad.com/tt"
         params = {
+            "ac": "5",
             "channel": "admitad",
             "order_id": event.order_id,
             "postback_key": "ed2Dd5f96a1b1a762b712D87CE925C6f",
@@ -71,7 +72,9 @@ async def track_conversion(event: TrackingEvent, request: Request):
             # "price": event.order_amount,
             "adm_method": "sr",  # Server request
             "adm_method_name": "postback_sdk",
-            "promocode": ""
+            "promocode": "",
+            "rt": "img",
+            "currency_code": "RUB"
         }
         # Добавляем корзину в параметры, только если она не пуста
         if admitad_basket:

@@ -32,7 +32,7 @@
         paymentType: type,
         // Используем переданные items, а не getCart()
         items: items.map(item => ({
-            id: String(item.product_id || item.id), // Поддерживаем оба формата
+            id: String(item.item_id || item.product_id || item.id), // Поддерживаем оба формата
             price: Number(item.price),
             quantity: Number(item.quantity),
             sku: item.sku || null
