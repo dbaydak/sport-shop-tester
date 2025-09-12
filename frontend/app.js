@@ -53,9 +53,10 @@ function renderHeader() {
 const API_URL = 'http://127.0.0.1:8000/api';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Отрисовываем общие компоненты
-    renderHeadContent();
+    // 1. Сначала отрисовываем общие компоненты
     renderHeader();
+    // Обновляем корзину сразу после отрисовки шапки
+    updateCartCountAndTotal();
 
     // 2. Запускаем логику, специфичную для текущей страницы
     const path = window.location.pathname.split('/').pop();
@@ -80,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 3. Обновляем информацию в корзине (в шапке)
-    updateCartCountAndTotal();
+    // updateCartCountAndTotal();
 });
 
 
