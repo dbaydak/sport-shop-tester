@@ -25,24 +25,19 @@
         return params.get(paramName);
     }
 
-    function getCart() {
-        return JSON.parse(localStorage.getItem('cart')) || [];
-    }
-
-    // --- Внутренняя функция для отправки данных на API-шлюз ---
-    function track(type, data) {
-        const cart = getCart();
-        const payload = {
-            orderId: String(data.orderId),
-            orderAmount: Number(data.orderAmount),
-            paymentType: type,
-            items: cart.map(item => ({
-                id: String(item.id),
-                price: Number(item.price),
-                quantity: Number(item.quantity),
-                sku: item.sku || null
-            }))
-        };
+    function track(type, data, items = []) { // Принимаем items как новый аргумент
+    const payload = {
+        orderId: String(data.orderId),
+        orderAmount: Number(data.orderAmount),
+        paymentType: type,
+        // Используем переданные items, а не getCart()
+        items: items.map(item => ({
+            id: String(item.product_id || item.id), // Поддерживаем оба формата
+            price: Number(item.price),
+            quantity: Number(item.quantity),
+            sku: item.sku || null
+        }))
+    };
 
         console.log('[Admitad Tracker] Отправка события на API-шлюз:', payload);
 
@@ -71,18 +66,32 @@
         const path = window.location.pathname;
 
         if (path.includes('confirmation.html')) {
-            const orderDetails = JSON.parse(sessionStorage.getItem('lastOrderDetails'));
-            if (orderDetails) {
+            // --- Логирование, которое вы попросили сохранить ---
+            console.log('[Admitad Tracker] Проверка sessionStorage на странице заказа...');
+            const orderDetailsRaw = sessionStorage.getItem('lastOrderDetails');
+            console.log('[Admitad Tracker] Получено из sessionStorage:', orderDetailsRaw);
+            // ----------------------------------------------------
+
+            if (orderDetailsRaw) {
+                const orderDetails = JSON.parse(orderDetailsRaw);
                 console.log('[Admitad Tracker] Обнаружена страница заказа. Отправка события "sale".');
+
+                // Ключевое исправление: передаём orderDetails.items в функцию track
                 track('sale', {
                     orderId: orderDetails.order_id,
                     orderAmount: orderDetails.total_amount
-                });
+                }, orderDetails.items); // <-- Добавлен третий аргумент с товарами
+
+            } else {
+                console.log('[Admitad Tracker] Данные о заказе в sessionStorage не найдены. Постбэк не отправлен.');
             }
+
         } else if (path.includes('event-confirmation.html')) {
+            // Логика для событий 'lead' остаётся прежней
             const regDetails = JSON.parse(sessionStorage.getItem('lastEventRegistration'));
             if (regDetails) {
                 console.log('[Admitad Tracker] Обнаружена страница записи. Отправка события "lead".');
+                // Для событий 'lead' корзина не нужна
                 track('lead', {
                     orderId: regDetails.registration_id,
                     orderAmount: 0

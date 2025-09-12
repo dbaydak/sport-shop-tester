@@ -24,38 +24,31 @@ app.add_middleware(
 )
 
 # --- Подключаем все наши API-роутеры ---
-app.include_router(products.router)
-app.include_router(transactions.router)
-app.include_router(orders.router)
-app.include_router(events.router)
+app.include_router(products.router, prefix="/api")
+app.include_router(transactions.router, prefix="/api")
+app.include_router(orders.router, prefix="/api")
+app.include_router(events.router, prefix="/api")
 app.include_router(admitad_integration.router)
 
 
 @app.get("/api/categories")
 def get_categories():
+    logging.info("Получение категорий")
     """
     Возвращает список всех уникальных категорий товаров.
     """
     # Убедитесь, что db импортирован: from backend import db
     all_products = db.PRODUCTS_DB
+    logging.info(f"Всего продуктов: {len(all_products)}")
+    if not all_products:
+        logging.warning("База данных продуктов пуста")
+        return []
     # Используем множество (set) для автоматического получения уникальных значений
     unique_categories = sorted(list({p['category'] for p in all_products}))
+    logging.info(f"Найденные категории: {unique_categories}")
     return unique_categories
 
 
 # --- ЯВНАЯ ОТДАЧА СТАТИЧЕСКИХ ФАЙЛОВ ---
 # 1. Подключаем папку frontend как статику по пути /
-app.mount("/", StaticFiles(directory="frontend"), name="static")
-
-# 2. Создаём явный обработчик для корневого маршрута, который отдаёт index.html
-@app.get("/", include_in_schema=False)
-async def read_index():
-    return FileResponse('frontend/index.html')
-
-# 3. Добавляем "catch-all" обработчик, чтобы любая другая страница
-#    (например, /checkout.html) также возвращала свой HTML-файл.
-@app.get("/{full_path:path}", include_in_schema=False)
-async def read_catch_all(request: Request, full_path: str):
-    # Пытаемся найти файл. Если его нет, FastAPI вернёт 404.
-    return FileResponse(f'frontend/{full_path}')
-
+app.mount("/", StaticFiles(directory="frontend", html=True), name="static")

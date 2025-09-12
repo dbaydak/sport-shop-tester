@@ -36,8 +36,11 @@ async def track_conversion(event: TrackingEvent, request: Request):
     Принимает запрос от JS-трекера, проверяет атрибуцию
     и отправляет S2S Postback в Admitad.
     """
+    log.info("--- Endpoint /api/track-conversion вызван ---")
     uid_from_cookie = request.cookies.get("admitad_aid")
     source_from_cookie = request.cookies.get("deduplication_cookie")
+    log.info(
+        f"Получены куки: admitad_aid='{uid_from_cookie}', deduplication_cookie='{source_from_cookie}'")
 
     # Логика дедупликации: отправляем, только если есть UID и источник - Admitad
     if uid_from_cookie and source_from_cookie == "admitad":
@@ -50,7 +53,7 @@ async def track_conversion(event: TrackingEvent, request: Request):
             position_count = len(event.items)
             admitad_basket = {
                 "tariff_code": ["1"] * position_count,
-                "order_id": [event.order_id] * position_count,
+                # "order_id": [event.order_id] * position_count,
                 "position_id": [str(i + 1) for i in range(position_count)],
                 "position_count": [str(position_count)] * position_count,
                 "price": [str(item.price) for item in event.items],
@@ -60,12 +63,13 @@ async def track_conversion(event: TrackingEvent, request: Request):
 
         postback_url = "https://ad.admitad.com/tt"
         params = {
+            "channel": "admitad",
             "order_id": event.order_id,
             "postback_key": "ed2Dd5f96a1b1a762b712D87CE925C6f",
             "campaign_code": "8817907101",
             "uid": uid_from_cookie,
             "payment_type": event.payment_type,
-            "price": event.order_amount,
+            # "price": event.order_amount,
             "adm_method": "sr",  # Server request
             "adm_method_name": "postback_sdk",
             "promocode": ""
@@ -75,6 +79,8 @@ async def track_conversion(event: TrackingEvent, request: Request):
             params["_ps"] = json.dumps(admitad_basket)
 
         try:
+            log.info(
+                f"Отправка запроса на URL: {postback_url} с параметрами: {params}")
             response = requests.get(postback_url, params=params, timeout=5)
             response.raise_for_status()
             log.info(
@@ -86,6 +92,7 @@ async def track_conversion(event: TrackingEvent, request: Request):
                                 detail="Failed to send postback.")
 
     else:
+        log.info("Условие для отправки постбэка НЕ ВЫПОЛНЕНО.")
         log.info(
             f"ДЕДУПЛИКАЦИЯ: Конверсия для UID '{uid_from_cookie}' атрибуцирована источнику '{source_from_cookie}'. Постбэк не отправлен.")
         return {"status": "deduplicated", "source": source_from_cookie}

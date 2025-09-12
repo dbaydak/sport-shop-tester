@@ -96,8 +96,15 @@ function getCookie(name) {
     return matches ? decodeURIComponent(matches[1]) : null;
 }
 
-function getCart() { return JSON.parse(localStorage.getItem('cart')) || []; }
-function saveCart(cart) { localStorage.setItem('cart', JSON.stringify(cart)); updateCartCountAndTotal(); }
+function getCart() {
+    try {
+        const cartData = localStorage.getItem('cart');
+        return cartData ? JSON.parse(cartData) : [];
+    } catch (e) {
+        console.error("Ошибка парсинга корзины из localStorage:", e);
+        return []; // Возвращаем пустую корзину в случае ошибки
+    }
+}function saveCart(cart) { localStorage.setItem('cart', JSON.stringify(cart)); updateCartCountAndTotal(); }
 
 function showToast(message, type = 'success') {
     const toast = document.createElement('div');
@@ -153,33 +160,50 @@ function removeFromCart(id) { let cart = getCart(); cart = cart.filter(item => i
 
 // Замените эту функцию в app.js
 
+const categoryNameMapping = {
+    'Аксессуары': 'Accessories',
+    'Обувь': 'Shoes',
+    'Гаджеты': 'Gadgets',
+    'Одежда': 'Clothes'
+};
+
 async function loadCategories() {
     const container = document.getElementById('categories-container');
-    if (!container) return; // Защита, если элемент не найден
+    if (!container) {
+        console.error("Контейнер для категорий не найден!");
+        return;
+    }
 
     try {
         const response = await fetch(`${API_URL}/categories`);
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`HTTP ошибка: ${response.status}`);
         }
         const categories = await response.json();
 
-        // --- НОВАЯ ПРОВЕРКА НА ПУСТЫЕ ДАННЫЕ ---
         if (!categories || categories.length === 0) {
-            // Если массив пуст, выводим сообщение об этом.
-            container.innerHTML = `<p class="error-message">Каталог товаров пуст. Проверьте файл products.json на сервере.</p>`;
-            return; // Завершаем выполнение функции
+            container.innerHTML = `<p>Категории не найдены</p>`;
+            return;
         }
-        // --- КОНЕЦ ПРОВЕРКИ ---
 
-        container.innerHTML = ''; // Очищаем, только если данные есть
-        categories.forEach(category => {
+        container.innerHTML = ''; // Очищаем контейнер
+
+        categories.forEach(categoryNameRU => {
+            // Получаем английское название из нашего словаря
+            const categoryIdentifierEN = categoryNameMapping[categoryNameRU] || categoryNameRU;
+
             const categoryCard = document.createElement('a');
-            categoryCard.href = `products.html?category=${encodeURIComponent(category)}`;
+            // Используем английское название для URL
+            categoryCard.href = `products.html?category=${encodeURIComponent(categoryIdentifierEN)}`;
             categoryCard.className = 'category-card';
-            categoryCard.innerHTML = `<h3>${category}</h3>`;
+            // А русское оставляем для отображения пользователю
+            categoryCard.innerHTML = `
+                <div class="product-image-placeholder"></div>
+                <h3>${categoryNameRU}</h3>
+            `;
             container.appendChild(categoryCard);
         });
+
     } catch (error) {
         console.error("Ошибка при загрузке категорий:", error);
         container.innerHTML = `<p class="error-message">Не удалось загрузить категории. Проверьте консоль сервера (бэкенда) на наличие ошибок.</p>`;
@@ -190,34 +214,86 @@ async function loadProductsByCategory() {
     const container = document.getElementById('products-list-container');
     const title = document.getElementById('category-title');
     if (!container || !title) return;
+
     const params = new URLSearchParams(window.location.search);
     const category = params.get('category');
-    if (!category) { title.textContent = 'Категория не выбрана'; container.innerHTML = ''; return; }
+    if (!category) {
+        title.textContent = 'Категория не выбрана';
+        container.innerHTML = '';
+        return;
+    }
+
     title.textContent = `Товары в категории: ${category}`;
     try {
         const response = await fetch(`${API_URL}/products?category=${encodeURIComponent(category)}`);
         if (!response.ok) throw new Error('Network response was not ok');
         const products = await response.json();
+
         container.innerHTML = '';
-        if (products.length === 0) { container.innerHTML = '<p>В этой категории пока нет товаров.</p>'; return; }
-        products.forEach(product => { container.appendChild(createProductCard(product)); });
-    } catch (error) { container.innerHTML = `<p class="error-message">Не удалось загрузить товары.</p>`; }
+        if (products.length === 0) {
+            container.innerHTML = '<p>В этой категории пока нет товаров.</p>';
+            return;
+        }
+
+        products.forEach(product => {
+            container.appendChild(createProductCard(product));
+        });
+    } catch (error) {
+        container.innerHTML = `<p class="error-message">Не удалось загрузить товары.</p>`;
+    }
 }
 
 async function loadProductDetails() {
+    // Находим главный контейнер на странице деталей товара
     const container = document.getElementById('product-detail-container');
-    if (!container) return;
+    if (!container) {
+        console.error('Контейнер для деталей товара не найден!');
+        return;
+    }
+
+    // 1. Получаем ID товара из URL (например, ?id=4)
     const params = new URLSearchParams(window.location.search);
     const productId = params.get('id');
-    if (!productId) { container.innerHTML = `<p class="error-message">ID товара не указан.</p>`; return; }
+
+    if (!productId) {
+        container.innerHTML = '<p class="error-message">ID товара не указан в URL.</p>';
+        return;
+    }
+
+    container.innerHTML = '<div class="loader">Загрузка информации о товаре...</div>';
+
     try {
+        // 2. Делаем запрос к API по адресу /api/products/{id}
         const response = await fetch(`${API_URL}/products/${productId}`);
-        if (!response.ok) throw new Error('Товар не найден');
+
+        if (!response.ok) {
+            // Если сервер вернул 404 или другую ошибку
+            throw new Error(`Товар с ID ${productId} не найден`);
+        }
         const product = await response.json();
-        document.title = `${product.name} - Тестовый Магазин`;
-        container.innerHTML = `<div class="product-detail-image"><img src="https://placehold.co/600x400/EFEFEF/333333?text=${encodeURIComponent(product.name)}" alt="${product.name}"></div><div class="product-detail-info form-card"><h2>${product.name}</h2><p class="product-category">${product.category}</p><p>${product.description}</p><div class="product-price"><strong>${product.price.toFixed(2)} руб.</strong></div><div class="product-controls"><input type="number" id="quantity-${product.id}" value="1" min="1" class="quantity-input"><button id="add-to-cart-btn" class="button">В корзину</button></div></div>`;
-        document.getElementById('add-to-cart-btn').onclick = () => { addToCart(product.id, product.name, product.price, product.sku); };
-    } catch (error) { container.innerHTML = `<p class="error-message">${error.message}.</p>`; }
+
+        // 3. Генерируем HTML и отображаем данные на странице
+        container.innerHTML = `
+            <div class="product-detail-image">
+                <img src="https://placehold.co/600x400/EFEFEF/333333?text=${encodeURIComponent(product.category)}" alt="${product.name}">
+            </div>
+            <div class="product-detail-info">
+                <h1>${product.name}</h1>
+                <p class="product-category">Артикул: ${product.sku}</p>
+                <p>${product.description}</p>
+                <div class="product-price"><strong>${product.price.toFixed(2)} руб.</strong></div>
+                <div class="product-controls">
+                    <label for="quantity-${product.id}" class="visually-hidden">Количество:</label>
+                    <input type="number" id="quantity-${product.id}" value="1" min="1" class="quantity-input">
+                    <button class="button" onclick="addToCart(${product.id}, '${product.name}', ${product.price}, '${product.sku}')">Добавить в корзину</button>
+                </div>
+            </div>
+        `;
+
+    } catch (error) {
+        console.error('Ошибка при загрузке деталей товара:', error);
+        container.innerHTML = `<p class="error-message">Не удалось загрузить информацию о товаре. ${error.message}</p>`;
+    }
 }
 
 function createProductCard(product) {
@@ -226,7 +302,12 @@ function createProductCard(product) {
     cardLink.className = 'product-card-link';
     const card = document.createElement('div');
     card.className = 'product-card';
-    card.innerHTML = `<img src="https://placehold.co/300x200/EFEFEF/333333?text=${encodeURIComponent(product.category)}" alt="${product.name}" class="product-image"><h3>${product.name}</h3><div class="product-price"><strong>${product.price.toFixed(2)} руб.</strong></div>`;
+    card.innerHTML = `
+        <img src="https://placehold.co/300x200/EFEFEF/333333?text=${encodeURIComponent(product.category)}" alt="${product.name}" class="product-image">
+        <h3>${product.name}</h3>
+        <div class="product-price"><strong>${product.price.toFixed(2)} руб.</strong></div>
+    `;
+
     cardLink.appendChild(card);
     return cardLink;
 }
@@ -377,11 +458,16 @@ async function sendOrderToServer(payload) {
     return result;
 }
 
-function handleSuccessfulOrder(result) {
+function handleSuccessfulOrder(result, payload) {
     if (!result || !result.order_id) {
         throw new Error("Сервер вернул некорректный успешный ответ.");
     }
-    sessionStorage.setItem('lastOrderDetails', JSON.stringify(result));
+    // Добавляем товары из payload в объект, который сохраним
+    const confirmationDetails = {
+        ...result,
+        items: payload.items
+    };
+    sessionStorage.setItem('lastOrderDetails', JSON.stringify(confirmationDetails));
     localStorage.removeItem('cart');
     window.location.href = 'confirmation.html';
 }
@@ -399,7 +485,7 @@ async function handleCheckoutForm(e) {
         }
 
         const result = await sendOrderToServer(payload);
-        handleSuccessfulOrder(result);
+        handleSuccessfulOrder(result, payload);
 
     } catch (error) {
         console.error("ОШИБКА ПРИ ОТПРАВКЕ ЗАКАЗА:", error);
@@ -503,4 +589,3 @@ function displayEventConfirmation() {
         container.innerHTML = '<h2>Информация о записи не найдена</h2><a href="index.html" class="button">Вернуться на главную</a>';
     }
 }
-
