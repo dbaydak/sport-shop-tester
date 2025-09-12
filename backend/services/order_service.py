@@ -1,3 +1,4 @@
+import logging
 import random
 import math
 import time
@@ -13,66 +14,80 @@ def process_new_order(order: Order) -> dict:
     Полный цикл обработки нового заказа: проверка, симуляция оплаты,
     сохранение транзакции и вызов трекинга.
     """
-    print("ЭМУЛЯЦИЯ: Начало обработки заказа, ждем 1 секунду...")
+    logging.info(
+        f"СЕРВИС: Начало обработки заказа для {order.user_email}...")
     time.sleep(1)
-    # 1. Серверная валидация суммы
-    server_total = sum(item.price * item.quantity for item in order.items)
-    if not math.isclose(server_total, order.total_amount):
-        raise ValueError("Сумма заказа не совпадает.")
+    try:
+        # 1. Серверная валидация суммы
+        server_total = sum(item.price * item.quantity for item in order.items)
+        if not math.isclose(server_total, order.total_amount):
+            raise ValueError("Сумма заказа не совпадает.")
 
-    # 2. Симуляция банковской операции
-    payment_result = {"status": "success"}
-    if order.payment_method == "card":
-        if not order.card_details:
-            raise ValueError("Данные карты обязательны при онлайн-оплате.")
-        payment_result = _simulate_bank_processing(order.card_details)
-        if payment_result["status"] == "failed":
-            raise ValueError(payment_result["reason"])
+        # 2. Симуляция банковской операции
+        payment_result = {"status": "success"}
+        if order.payment_method == "card":
+            if not order.card_details:
+                raise ValueError("Данные карты обязательны при онлайн-оплате.")
+            payment_result = _simulate_bank_processing(order.card_details)
+            if payment_result["status"] == "failed":
+                raise ValueError(payment_result["reason"])
 
-    # 3. Создание и сохранение транзакции
-    order_id = random.randint(1000, 9999)
-    transaction = _create_and_save_transaction(
-        order_id=order_id,
-        transaction_id=payment_result.get("transaction_id"),
-        user_email=order.user_email,
-        amount=server_total,
-        payment_method=order.payment_method,
-        admitad_uid=order.admitad_uid
-    )
+        # 3. Создание и сохранение транзакции
+        order_id = random.randint(1000, 9999)
+        transaction = _create_and_save_transaction(
+            order_id=order_id,
+            transaction_id=payment_result.get("transaction_id"),
+            user_email=order.user_email,
+            amount=server_total,
+            payment_method=order.payment_method,
+            admitad_uid=order.admitad_uid
+        )
 
-    # 4. Вызов сервиса трекинга
-    tracking_service.send_postback_to_admitad(transaction)
+        # 4. Вызов сервиса трекинга
+        # tracking_service.send_postback_to_admitad(transaction)
 
-    print(f"ИЗ СЕРВИСА: Новый заказ #{order_id} успешно обработан.")
-    return {"order_id": order_id, "total_amount": server_total}
+        logging.info(f"СЕРВИС: Новый заказ #{order_id} успешно обработан.")
+        return {"order_id": order_id, "total_amount": server_total}
+    except ValueError as e:
+        # 4. Добавляем логирование ошибок
+        logging.error(f"Ошибка валидации при обработке заказа: {e}")
+        # Передаём ошибку дальше, чтобы FastAPI вернул корректный ответ
+        raise e
 
 
 def process_event_registration(registration: EventRegistration) -> dict:
     """
     Полный цикл обработки записи на мероприятие.
     """
-    print("ЭМУЛЯЦИЯ: Начало обработки записи, ждем 1 секунду...")
+    logging.info(
+        f"СЕРВИС: Начало обработки записи для {registration.user_email}...")
     time.sleep(1)
-    registration_id = random.randint(10000, 99999)
+    try:
+        registration_id = random.randint(10000, 99999)
 
-    # Запись на мероприятие тоже является транзакцией (с нулевой суммой)
-    transaction = _create_and_save_transaction(
-        order_id=registration_id,
-        user_email=registration.user_email,
-        amount=0.0,
-        payment_method="event_registration",
-        admitad_uid=registration.admitad_uid
-    )
+        # Запись на мероприятие тоже является транзакцией (с нулевой суммой)
+        transaction = _create_and_save_transaction(
+            order_id=registration_id,
+            user_email=registration.user_email,
+            amount=0.0,
+            payment_method="event_registration",
+            admitad_uid=registration.admitad_uid
+        )
 
-    # Вызов сервиса трекинга
-    tracking_service.send_postback_to_admitad(transaction)
+        # Вызов сервиса трекинга
+        # tracking_service.send_postback_to_admitad(transaction)
 
-    print(f"ИЗ СЕРВИСА: Новая запись #{registration_id} успешно обработана.")
-    return {
-        "registration_id": registration_id,
-        "user_name": registration.user_name,
-        "event_name": registration.event_name
-    }
+        logging.info(f"СЕРВИС: Новая запись #{registration_id} успешно обработана.")
+        return {
+            "registration_id": registration_id,
+            "user_name": registration.user_name,
+            "event_name": registration.event_name
+        }
+    except ValueError as e:
+        # Добавляем логирование ошибок
+        logging.error(f"Ошибка валидации при обработке регистрации: {e}")
+        # Передаём ошибку дальше, чтобы FastAPI вернул корректный ответ
+        raise e
 
 
 # --- Приватные вспомогательные функции, используемые только внутри этого сервиса ---

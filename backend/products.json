@@ -1,30 +1,106 @@
 [
     {
         "id": 1,
+        "sku": "SHOE-PRORUN-42",
         "name": "Беговые кроссовки ProRun",
         "category": "Обувь",
         "description": "Легкие и удобные кроссовки для профессионального бега.",
         "price": 8500.00
     },
     {
+        "id": 5,
+        "sku": "SHOE-TREK-44",
+        "name": "Ботинки для трекинга Summit",
+        "category": "Обувь",
+        "description": "Надежная защита и сцепление на любом рельефе.",
+        "price": 12500.00
+    },
+    {
+        "id": 6,
+        "sku": "SHOE-CASUAL-39",
+        "name": "Кеды городские Urban Style",
+        "category": "Обувь",
+        "description": "Стильные кеды для повседневной носки.",
+        "price": 4200.00
+    },
+    {
         "id": 2,
+        "sku": "GADGET-SB5-BLK",
         "name": "Фитнес-трекер SmartBand 5",
         "category": "Гаджеты",
         "description": "Отслеживайте свою активность и пульс 24/7.",
         "price": 3200.00
     },
     {
+        "id": 7,
+        "sku": "GADGET-GPS-WATCH",
+        "name": "Часы с GPS Navigator Pro",
+        "category": "Гаджеты",
+        "description": "Точная навигация и спортивные режимы для путешествий.",
+        "price": 25000.00
+    },
+    {
+        "id": 8,
+        "sku": "GADGET-HEADPHONES-BT",
+        "name": "Беспроводные наушники SportAir",
+        "category": "Гаджеты",
+        "description": "Защита от пота и идеальная посадка для тренировок.",
+        "price": 5500.00
+    },
+    {
         "id": 3,
+        "sku": "CLOTH-DRYFIT-M-BLU",
         "name": "Футболка для тренировок DryFit",
         "category": "Одежда",
         "description": "Отводит влагу и сохраняет комфорт.",
         "price": 2500.00
     },
     {
+        "id": 9,
+        "sku": "CLOTH-HOODIE-L-GRY",
+        "name": "Толстовка Tech Fleece",
+        "category": "Одежда",
+        "description": "Теплая и легкая толстовка для прохладной погоды.",
+        "price": 6800.00
+    },
+    {
+        "id": 10,
+        "sku": "CLOTH-SHORTS-M-BLK",
+        "name": "Шорты для бега Pace",
+        "category": "Одежда",
+        "description": "Ультралегкие шорты со встроенными карманами.",
+        "price": 3100.00
+    },
+    {
+        "id": 11,
+        "sku": "CLOTH-JACKET-XL-RED",
+        "name": "Ветровка Wind Shield",
+        "category": "Одежда",
+        "description": "Защищает от ветра и легкого дождя.",
+        "price": 7500.00
+    },
+    {
         "id": 4,
+        "sku": "ACC-WB-750",
         "name": "Бутылка для воды (750 мл)",
         "category": "Аксессуары",
         "description": "Эргономичная бутылка, не содержит BPA.",
         "price": 990.00
+    },
+    {
+        "id": 12,
+        "sku": "ACC-YOGA-MAT",
+        "name": "Коврик для йоги ProMat",
+        "category": "Аксессуары",
+        "description": "Нескользящий коврик для комфортной практики.",
+        "price": 2800.00
+    },
+    {
+        "id": 13,
+        "sku": "ACC-BACKPACK-25L",
+        "name": "Спортивный рюкзак CityMove",
+        "category": "Аксессуары",
+        "description": "Вместительный рюкзак с отделением для ноутбука.",
+        "price": 4500.00
     }
 ]
