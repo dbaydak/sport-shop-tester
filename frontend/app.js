@@ -462,6 +462,26 @@ function handleSuccessfulOrder(result, payload) {
     if (!result || !result.order_id) {
         throw new Error("Сервер вернул некорректный успешный ответ.");
     }
+
+    // --- ИЗМЕНЁННЫЙ БЛОК ---
+    // 1. Создаём объект события
+    const dataLayerEvent = {
+        'event': 'purchase',
+        'ecommerce': {
+            'transaction_id': result.order_id,
+            'value': payload.total_amount,
+            'items': payload.items.map(item => ({
+                'item_id': item.product_id,
+                'item_name': item.name,
+                'price': item.price,
+                'quantity': item.quantity
+            }))
+        }
+    };
+    // 2. Сохраняем его в sessionStorage для СЛЕДУЮЩЕЙ страницы
+    sessionStorage.setItem('dataLayerEvent', JSON.stringify(dataLayerEvent));
+    console.log('[App] Событие "purchase" сохранено в sessionStorage для передачи.');
+    // --- КОНЕЦ БЛОКА ---
     // Добавляем товары из payload в объект, который сохраним
     const confirmationDetails = {
         ...result,

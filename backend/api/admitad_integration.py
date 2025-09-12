@@ -53,7 +53,6 @@ async def track_conversion(event: TrackingEvent, request: Request):
             position_count = len(event.items)
             admitad_basket = {
                 "tariff_code": ["1"] * position_count,
-                # "order_id": [event.order_id] * position_count,
                 "position_id": [str(i + 1) for i in range(position_count)],
                 "position_count": [str(position_count)] * position_count,
                 "price": [str(item.price) for item in event.items],
