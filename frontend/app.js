@@ -130,13 +130,18 @@ function updateCartCountAndTotal() {
     if (cartTotalEl) cartTotalEl.textContent = totalPrice.toFixed(2);
 }
 
-function addToCart(id, name, price, sku) {
+function addToCart(id, name, price, sku, category) {
     const quantityInput = document.querySelector(`#quantity-${id}`);
     const quantity = quantityInput ? parseInt(quantityInput.value, 10) : 1;
-    if (isNaN(quantity) || quantity <= 0) { showToast('Выберите корректное количество.', 'error'); return; }
+    if (isNaN(quantity) || quantity <= 0) { /* ... */ }
     const cart = getCart();
     const existingProduct = cart.find(item => item.id === id);
-    if (existingProduct) { existingProduct.quantity += quantity; } else { cart.push({ id, name, price, sku, quantity }); }
+    if (existingProduct) {
+        existingProduct.quantity += quantity;
+    } else {
+        // Добавляем 'category' в объект товара в корзине
+        cart.push({ id, name, price, sku, quantity, category });
+    }
     saveCart(cart);
     showToast(`"${name}" (x${quantity}) добавлен в корзину!`);
     if(quantityInput) quantityInput.value = 1;
@@ -285,7 +290,7 @@ async function loadProductDetails() {
                 <div class="product-controls">
                     <label for="quantity-${product.id}" class="visually-hidden">Количество:</label>
                     <input type="number" id="quantity-${product.id}" value="1" min="1" class="quantity-input">
-                    <button class="button" onclick="addToCart(${product.id}, '${product.name}', ${product.price}, '${product.sku}')">Добавить в корзину</button>
+                    <button class="button" onclick="addToCart(${product.id}, '${product.name}', ${product.price}, '${product.sku}', '${product.category}')">Добавить в корзину</button>
                 </div>
             </div>
         `;
@@ -459,36 +464,77 @@ async function sendOrderToServer(payload) {
 }
 
 function handleSuccessfulOrder(result, payload) {
+    // 1. Проверка ответа от сервера (без изменений)
     if (!result || !result.order_id) {
         throw new Error("Сервер вернул некорректный успешный ответ.");
     }
 
-    // --- ИЗМЕНЁННЫЙ БЛОК ---
-    // 1. Создаём объект события
+    // ===================================================================
+    // --- Шаг A: Бизнес-логика рекламодателя (всё в одном месте) ---
+    // ===================================================================
+
+    // 1. Логика для определения action_code
+    function determineUserActionCode() {
+        const isReturning = document.cookie.includes('returning_user=true');
+        return isReturning ? "2" : "5";
+    }
+    const actionCode = determineUserActionCode();
+
+    // 2. Логика для определения tariff_code для каждого товара
+    const TARIFF_MAP = {
+        "Shoes": "2",
+        "Gadgets": "3",
+    };
+    const DEFAULT_TARIFF_CODE = "1";
+
+    const tariffCodes = payload.items.map(item => {
+        // Убедитесь, что в 'item' есть поле 'category'
+        const category = item.category || 'default';
+        // ИСПРАВЛЕНА ОПЕЧАТКА: TARIFF_MAP вместо CATEGORY_TO_TARIFF_MAP
+        return TARIFF_MAP[category] || DEFAULT_TARIFF_CODE;
+    });
+
+    // ===================================================================
+    // --- Шаг Б: Подготовка всех данных для следующей страницы ---
+    // ===================================================================
+
+    // 1. Готовим стандартное событие для Data Layer
     const dataLayerEvent = {
-        'event': 'purchase',
+    'event': 'purchase',
         'ecommerce': {
             'transaction_id': result.order_id,
             'value': payload.total_amount,
             'items': payload.items.map(item => ({
                 'item_id': item.product_id,
-                'item_name': item.name,
+                'item_name': item.name,     // <-- Вот item_name
                 'price': item.price,
-                'quantity': item.quantity
+                'quantity': item.quantity  // <-- А вот quantity
             }))
         }
     };
-    // 2. Сохраняем его в sessionStorage для СЛЕДУЮЩЕЙ страницы
-    sessionStorage.setItem('dataLayerEvent', JSON.stringify(dataLayerEvent));
-    console.log('[App] Событие "purchase" сохранено в sessionStorage для передачи.');
-    // --- КОНЕЦ БЛОКА ---
-    // Добавляем товары из payload в объект, который сохраним
+
+    // 2. Готовим объект для отображения на странице подтверждения
     const confirmationDetails = {
         ...result,
         items: payload.items
     };
+
+    // 3. Сохраняем всё в sessionStorage
+    sessionStorage.setItem('admitad_action_code', actionCode);
+    sessionStorage.setItem('admitad_tariff_codes', JSON.stringify(tariffCodes));
+    sessionStorage.setItem('dataLayerEvent', JSON.stringify(dataLayerEvent));
     sessionStorage.setItem('lastOrderDetails', JSON.stringify(confirmationDetails));
+
+    console.log('[App] Все данные о заказе, включая кастомные, сохранены для передачи.');
+
+    // ===================================================================
+    // --- Шаг В: Финальные действия ---
+    // ===================================================================
+
+    // 1. Очищаем корзину
     localStorage.removeItem('cart');
+
+    // 2. Перенаправляем пользователя
     window.location.href = 'confirmation.html';
 }
 

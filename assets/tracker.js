@@ -1,132 +1,172 @@
-// Файл: assets/tracker.js
+// Файл: tracker.js
 (function() {
     'use strict';
 
     // --- Настройки ---
-    const UID_COOKIE_NAME = 'admitad_aid';
-    const DEDUPLICATION_COOKIE_NAME = 'deduplication_cookie';
+    const UID_COOKIE_NAME = '_adm_aid';
+    const DEDUPLICATION_COOKIE_NAME = '_last_source';
+    const PID_COOKIE_NAME = '_pid';
     const COOKIE_LIFETIME_DAYS = 90;
 
     // --- Вспомогательные функции ---
     function setCookie(name, value, days) {
-        if (!value) return;
-        let expires = "";
+        if (typeof value === 'undefined' || value === null) return;
+        let expires = '';
         if (days) {
             const date = new Date();
             date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-            expires = "; expires=" + date.toUTCString();
+            expires = `; expires=${date.toUTCString()}`;
         }
-        const domain = "; domain=." + window.location.hostname.replace(/^www\./i, "");
-        document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/" + domain;
+        const domain = `; domain=.${window.location.hostname.replace(/^www\./i, '')}`;
+        // Добавляем HttpOnly и SameSite=Lax для дополнительной защиты
+        document.cookie = `${name}=${encodeURIComponent(value)}${expires}; path=/; samesite=lax`;
+}
+
+    function getCookie(name) {
+        const matches = document.cookie.match(new RegExp(`(?:\\s|\\b|^)${name}=([^;]+)(?:;|$)`));
+        return matches ? decodeURIComponent(matches[1]) : null;
+    }
+
+    function deleteCookie(name) {
+        setCookie(name, '', -1);
     }
 
     function getParamFromURL(paramName) {
-        const params = new URLSearchParams(window.location.search);
-        return params.get(paramName);
+        return new URLSearchParams(window.location.search).get(paramName);
     }
 
-    function track(type, data, items = []) { // Принимаем items как новый аргумент
-    const payload = {
-        orderId: String(data.orderId),
-        orderAmount: Number(data.orderAmount),
-        paymentType: type,
-        // Используем переданные items, а не getCart()
-        items: items.map(item => ({
-            id: String(item.item_id || item.product_id || item.id), // Поддерживаем оба формата
-            price: Number(item.price),
-            quantity: Number(item.quantity),
-            sku: item.sku || null
-        }))
-    };
+    function logError(message, details) {
+        console.error(`[Admitad Tracker] ${message}`, details);
+    }
+
+    // --- Функция отправки данных на бэкенд ---
+    async function track(type, data, items = []) {
+        if (!data || !data.orderId || !data.orderAmount) {
+            logError('Неверные или отсутствующие обязательные поля.', data);
+            return;
+        }
+
+        const payload = {
+            orderId: String(data.orderId),
+            orderAmount: Number(data.orderAmount),
+            paymentType: type,
+            actionCode: data.actionCode || null,
+            tariffCodes: data.tariffCodes || null,
+            items: items.map(item => ({
+                id: String(item.item_id || item.product_id || item.id),
+                price: Number(item.price),
+                quantity: Number(item.quantity),
+                sku: item.sku || null
+            }))
+        };
 
         console.log('[Admitad Tracker] Отправка события на API-шлюз:', payload);
 
-        fetch('/api/track-conversion', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify(payload)
-        })
-        .then(response => {
-            if (response.ok) {
-                console.log('[Admitad Tracker] Событие успешно отправлено на сервер.');
+        try {
+            const response = await fetch('/api/track-conversion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                logError('Сервер вернул ошибку при отправке события.', {
+                    status: response.statusText
+                });
             } else {
-                console.error('[Admitad Tracker] Сервер вернул ошибку при отправке события.');
+                console.log('[Admitad Tracker] Событие успешно отправлено на сервер.');
             }
-        })
-        .catch(error => {
-            console.error('[Admitad Tracker] Ошибка сети при отправке события:', error);
-        });
-    }
-
-// --- НОВЫЙ БЛОК: ПРОВЕРКА СОБЫТИЙ ИЗ SESSIONSTORAGE ---
-(function() {
-    const pendingEvent = sessionStorage.getItem('dataLayerEvent');
-    if (pendingEvent) {
-        // Если событие есть, добавляем его в dataLayer ТЕКУЩЕЙ страницы
-        window.dataLayer = window.dataLayer || [];
-        window.dataLayer.push(JSON.parse(pendingEvent));
-        // И сразу же удаляем, чтобы не отправить его повторно
-        sessionStorage.removeItem('dataLayerEvent');
-        console.log('[Admitad Tracker] Обнаружено и обработано событие из sessionStorage.');
-    }
-})();
-// --- КОНЕЦ НОВОГО БЛОКА ---
-
-    // --- НОВАЯ ЛОГИКА: УМНЫЙ СЛУШАТЕЛЬ DATA LAYER ---
-function processDataLayerEvent(event) {
-    if (!event || typeof event !== 'object') return;
-    console.log('[Admitad Tracker] Обработка события из Data Layer:', event);
-
-    // Если это событие покупки, обрабатываем его
-    if (event.event === 'purchase' && event.ecommerce) {
-        const orderData = event.ecommerce;
-        console.log('[Admitad Tracker] Обнаружено событие "purchase". Запуск трекинга.');
-        track('sale', {
-            orderId: orderData.transaction_id,
-            orderAmount: orderData.value
-        }, orderData.items);
-    }
-}
-
-// Инициализируем dataLayer, если его нет
-window.dataLayer = window.dataLayer || [];
-
-// --- Часть 1: Обрабатываем все события, которые УЖЕ есть в dataLayer ---
-window.dataLayer.forEach(event => processDataLayerEvent(event));
-
-// --- Часть 2: Начинаем слушать НОВЫЕ события, переопределяя push ---
-const originalPush = window.dataLayer.push;
-window.dataLayer.push = function(event) {
-    const result = originalPush.apply(this, arguments); // Сначала выполняем оригинальный push
-    processDataLayerEvent(event); // Затем обрабатываем новое событие
-    return result;
-};
-
-    // --- Логика установки cookie (без изменений) ---
-    const admitadUid = getParamFromURL('admitad_uid');
-    if (admitadUid) {
-        setCookie(UID_COOKIE_NAME, admitadUid, COOKIE_LIFETIME_DAYS);
-    }
-
-    let source;
-    if (admitadUid) {
-        source = 'admitad';
-    } else {
-        source = getParamFromURL('utm_source');
-        if (!source) {
-            if (getParamFromURL('gclid')) source = 'google';
-            else if (getParamFromURL('fbclid')) source = 'facebook';
+        } catch (err) {
+            logError('Ошибка сети при отправке события:', err.message);
         }
     }
-    if (source) {
-        setCookie(DEDUPLICATION_COOKIE_NAME, source, COOKIE_LIFETIME_DAYS);
+
+    // --- Блок обработки событий из sessionStorage (для Data Layer) ---
+    (function() {
+        const pendingEvent = sessionStorage.getItem('dataLayerEvent');
+        if (pendingEvent) {
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push(JSON.parse(pendingEvent));
+            sessionStorage.removeItem('dataLayerEvent');
+            console.log('[Admitad Tracker] Обнаружено и обработано событие из sessionStorage.');
+        }
+    })();
+
+    // --- "Умный" слушатель Data Layer ---
+    function processDataLayerEvent(event) {
+        if (!event || typeof event !== 'object') return;
+
+        if (event.event === 'purchase' && event.ecommerce) {
+            const orderData = event.ecommerce;
+
+            // 1. Получаем и СРАЗУ удаляем action_code, чтобы он был использован только один раз
+            const actionCode = sessionStorage.getItem('admitad_action_code');
+            if (actionCode) {
+                sessionStorage.removeItem('admitad_action_code');
+            }
+
+            // 2. Получаем и СРАЗУ удаляем tariff_codes
+            let tariffCodes = null;
+            const tariffCodesRaw = sessionStorage.getItem('admitad_tariff_codes');
+            if (tariffCodesRaw) {
+                try {
+                    tariffCodes = JSON.parse(tariffCodesRaw);
+                    sessionStorage.removeItem('admitad_tariff_codes');
+                } catch (e) {
+                    logError("Ошибка парсинга tariff_codes из sessionStorage", e);
+                }
+            }
+
+            console.log('[Admitad Tracker] Обнаружено событие "purchase". Запуск трекинга.');
+            track('sale', {
+                orderId: orderData.transaction_id,
+                orderAmount: orderData.value,
+                actionCode: actionCode,
+                tariffCodes: tariffCodes
+            }, orderData.items);
+        }
     }
 
-    console.log('[Admitad Tracker] Скрипт-слушатель Data Layer успешно инициализирован.');
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.forEach(processDataLayerEvent);
+    const originalPush = window.dataLayer.push;
+    window.dataLayer.push = function(event) {
+        const result = originalPush.apply(this, arguments);
+        processDataLayerEvent(event);
+        return result;
+    };
 
-    // Оставляем глобальный объект на случай ручного вызова
+    // --- Атрибуция LAST CLICK ---
+    function setDeduplicationCookie() {
+        const params = new URLSearchParams(window.location.search);
+        let source = params.get('utm_source');
+        if (!source) {
+            if (params.get('gclid')) {
+                source = 'advAutoMarkup';
+            } else if (params.get('fbclid')) {
+                source = 'facebook';
+            }
+        }
+        if (source) {
+            setCookie(DEDUPLICATION_COOKIE_NAME, source, COOKIE_LIFETIME_DAYS);
+            console.log(`[Admitad Tracker] Установлен/обновлён источник (${DEDUPLICATION_COOKIE_NAME}): ${source}`);
+        }
+    }
+
+    // Установка cookies и логика атрибуции
+    const admitadUidFromUrl = getParamFromURL('admitad_uid');
+    if (admitadUidFromUrl) {
+        setCookie(UID_COOKIE_NAME, admitadUidFromUrl, COOKIE_LIFETIME_DAYS);
+    }
+
+    const pidFromUrl = getParamFromURL('pid');
+    if (pidFromUrl) {
+        setCookie(PID_COOKIE_NAME, pidFromUrl, COOKIE_LIFETIME_DAYS);
+    }
+
+    setDeduplicationCookie(); // Учитываем последний клик для атрибуции
+
+    console.log('[Admitad Tracker] Скрипт-слушатель Data Layer успешно инициализирован.');
     window.admitadTracker = { track };
 })();

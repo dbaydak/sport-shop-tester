@@ -16,4 +16,4 @@ __pycache__/
 # Transactions file (contains sensitive user data)
 backend/transactions.json
 
-backend/.env
+.env
