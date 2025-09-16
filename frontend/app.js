@@ -458,6 +458,8 @@ async function sendOrderToServer(payload) {
     });
     const result = await response.json();
     if (!response.ok) {
+        console.error("Ошибка валидации от сервера (422):", result);
+        const error_message = result.detail[0] ? `${result.detail[0].msg} (в поле: ${result.detail[0].loc[1]})` : 'Неизвестная ошибка сервера';
         throw new Error(result.detail || 'Неизвестная ошибка сервера');
     }
     return result;
@@ -494,6 +496,19 @@ function handleSuccessfulOrder(result, payload) {
         return TARIFF_MAP[category] || DEFAULT_TARIFF_CODE;
     });
 
+    function getPromocodeFromOrder() {
+        // Пример: читаем значение из поля ввода на странице оформления заказа
+        const promocodeInput = document.getElementById('promocode-input');
+        if (promocodeInput && promocodeInput.value) {
+            // Здесь может быть логика валидации промокода
+            return promocodeInput.value;
+        }
+        // Если промокод не использовался, возвращаем пустую строку
+        return "";
+    }
+
+    const promocode = getPromocodeFromOrder();
+
     // ===================================================================
     // --- Шаг Б: Подготовка всех данных для следующей страницы ---
     // ===================================================================
@@ -520,6 +535,7 @@ function handleSuccessfulOrder(result, payload) {
     };
 
     // 3. Сохраняем всё в sessionStorage
+    sessionStorage.setItem('admitad_promocode', promocode);
     sessionStorage.setItem('admitad_action_code', actionCode);
     sessionStorage.setItem('admitad_tariff_codes', JSON.stringify(tariffCodes));
     sessionStorage.setItem('dataLayerEvent', JSON.stringify(dataLayerEvent));

@@ -50,6 +50,7 @@
             orderId: String(data.orderId),
             orderAmount: Number(data.orderAmount),
             paymentType: type,
+            promocode: data.promocode || null,
             actionCode: data.actionCode || null,
             tariffCodes: data.tariffCodes || null,
             items: items.map(item => ({
@@ -106,6 +107,9 @@
                 sessionStorage.removeItem('admitad_action_code');
             }
 
+            const promocode = sessionStorage.getItem('admitad_promocode');
+            if (promocode) sessionStorage.removeItem('admitad_promocode');
+
             // 2. Получаем и СРАЗУ удаляем tariff_codes
             let tariffCodes = null;
             const tariffCodesRaw = sessionStorage.getItem('admitad_tariff_codes');
@@ -122,6 +126,7 @@
             track('sale', {
                 orderId: orderData.transaction_id,
                 orderAmount: orderData.value,
+                promocode: promocode,
                 actionCode: actionCode,
                 tariffCodes: tariffCodes
             }, orderData.items);
