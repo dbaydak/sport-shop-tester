@@ -1,11 +1,11 @@
 import logging
-from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend import db
-from backend.api import products, transactions, orders, events, admitad_integration
+from backend.api import products, transactions, orders, events
+from backend.admitad_postback_plugin import admitad_integration
 
 # --- Настройка приложения и CORS ---
 app = FastAPI(title="Sport Shop Test API")
@@ -28,7 +28,7 @@ app.include_router(products.router, prefix="/api")
 app.include_router(transactions.router, prefix="/api")
 app.include_router(orders.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
-app.include_router(admitad_integration.router)
+app.include_router(admitad_integration.router, prefix="/s")
 
 
 @app.get("/api/categories")

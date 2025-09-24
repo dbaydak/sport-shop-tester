@@ -17,9 +17,10 @@ function renderHeadContent() {
         head.appendChild(link);
     }
     // Аккуратно добавляем трекер, если его нет
-    if (!head.querySelector('script[src="/tracker.js"]')) {
+    const trackerPath = '/s/main.js';
+    if (!head.querySelector(`script[src="${trackerPath}"]`)) {
         const trackerScript = document.createElement('script');
-        trackerScript.src = '/tracker.js';
+        trackerScript.src = trackerPath;;
         trackerScript.async = true;
         trackerScript.defer = true;
         head.appendChild(trackerScript);

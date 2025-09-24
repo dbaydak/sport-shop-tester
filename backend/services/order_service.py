@@ -6,7 +6,6 @@ from datetime import datetime
 
 from backend import db
 from backend.models import Order, EventRegistration, Transaction, CardDetails
-from backend.services import tracking_service
 
 
 def process_new_order(order: Order) -> dict:
