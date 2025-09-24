@@ -6,3 +6,9 @@ uvicorn[standard]==0.29.0
 
 # HTTP Client
 requests==2.31.0
+
+# Data Validation
+pydantic==2.7.1
+
+# Environment Variables Management
+python-dotenv==1.0.11.0

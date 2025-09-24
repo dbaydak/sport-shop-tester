@@ -607,6 +607,17 @@ function handleSuccessfulEvent(result) {
     if (!result || !result.registration_id) {
         throw new Error("Сервер вернул некорректный успешный ответ.");
     }
+    // Отправляем в dataLayer событие о генерации лида
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+        'event': 'generate_lead', // Используем новое, понятное имя события
+        'ecommerce': {
+            // В качестве ID транзакции используем ID регистрации
+            'transaction_id': result.registration_id,
+            'value': 0.00, // Стоимость лида обычно 0
+            'items': []    // Массив товаров пуст
+        }
+    });
     sessionStorage.setItem('lastEventRegistration', JSON.stringify(result));
     window.location.href = 'event-confirmation.html';
 }
@@ -648,9 +659,6 @@ function displayConfirmationDetails() {
             <p>Ваш заказ №<strong>${orderDetails.order_id}</strong> успешно оформлен.</p>
             <p>Итоговая сумма: <strong>${orderDetails.total_amount.toFixed(2)} руб.</strong></p>
             <a href="index.html" class="button">Вернуться на главную</a>`;
-
-        // Отправляем событие в dataLayer именно на странице подтверждения
-        console.log('[App] Отправка события purchase в dataLayer на странице confirmation.');
 
         window.dataLayer = window.dataLayer || [];
         window.dataLayer.push({

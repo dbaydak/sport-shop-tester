@@ -52,7 +52,7 @@
     const dataLayerMapping = {
         // --- Основные поля заказа ---
         // Укажите одно или несколько имён событий, которые должны считаться покупкой.
-        purchase_event_names: ['purchase', 'paid_order'],
+        purchase_event_names: ['purchase', 'paid_order', 'generate_lead'],
         transaction_id: 'ecommerce.transaction_id', // Путь к ID заказа
         order_value: 'ecommerce.value',             // Путь к ОБЩЕЙ сумме заказа (используется как fallback)
         currency: 'ecommerce.currency',             // Путь к валюте заказа
@@ -239,7 +239,9 @@
             } catch (e) { logError("Ошибка парсинга tariff_codes", e); }
         }
 
-        await track('sale', {
+        const paymentType = ['purchase', 'paid_order'].includes(data.eventType) ? 'sale' : 'lead';
+
+        await track(paymentType, {
             orderId: data.orderId,
             orderAmount: data.orderAmount,
             currency: data.currency,
@@ -307,7 +309,8 @@
             orderId: orderId,
             orderAmount: finalOrderAmount,
             currency: currency,
-            items: items
+            items: items,
+            eventType: event.event
         });
     }
 

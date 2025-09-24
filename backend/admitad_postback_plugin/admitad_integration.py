@@ -3,11 +3,11 @@
 @version 2.1.0
 @description Этот файл представляет собой серверный API-шлюз для трекера.
 Его задачи:
-1. Принимать параметры визита и устанавливать cookie (`/init-tracking`). # <-- ИСПРАВЛЕНО
-2. Принимать данные о конверсиях (`/track-conversion`). # <-- ИСПРАВЛЕНО
+1. Принимать параметры визита и устанавливать cookie (`/init-tracking`).
+2. Принимать данные о конверсиях (`/track-conversion`).
 3. Проводить логику дедупликации на основе данных из cookie.
 4. Формировать и отправлять серверный (S2S) postback-запрос в Admitad.
-5. Отдавать клиентский скрипт под нейтральным именем (`/main.js`). # <-- ИСПРАВЛЕНО
+5. Отдавать клиентский скрипт под нейтральным именем (`/main.js`).
 """
 
 import logging
@@ -20,25 +20,20 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from dotenv import load_dotenv
 
-# Загрузка переменных окружения из файла .env.
-# Это безопасный способ хранить секретные ключи и настройки.
-load_dotenv()
-
 # --- ⚙️ Настройка ---
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 router = APIRouter()
+dotenv_path = os.path.join(os.path.dirname(__file__), '.admitad.env')
+load_dotenv(dotenv_path=dotenv_path)
 
-# --- Конфигурационные настройки из .env файла ---
-# Эти параметры рекламодатель должен указать в файле .env в корне проекта.COOKIE_LIFETIME_DAYS = 90
-COOKIE_LIFETIME_DAYS = 90 # Срок жизни cookie в днях.
-COOKIE_REWRITE_THRESHOLD_SECONDS = 60  # Порог в секундах. Если _last_source пытаются перезаписать быстрее, запрос блокируется.
-ADMITAD_CAMPAIGN_CODE = os.getenv("ADMITAD_CAMPAIGN_CODE")  # Код рекламной кампании из личного кабинета Admitad.
-ADMITAD_POSTBACK_KEY = os.getenv("ADMITAD_POSTBACK_KEY")  # Секретный ключ для postback-запросов из личного кабинета.
-DEFAULT_ACTION_CODE = os.getenv("DEFAULT_ACTION_CODE", "5")  # Код действия (action) по умолчанию, если не передан.
-DEFAULT_TARIFF_CODE = os.getenv("DEFAULT_TARIFF_CODE", "1")  # Код тарифа по умолчанию, если не передан.
-DEFAULT_CURRENCY_CODE = os.getenv("DEFAULT_CURRENCY_CODE", "RUB")  # Валюта по умолчанию.
-
+# --- Конфигурационные настройки из .admitad.env файла ---
+COOKIE_LIFETIME_DAYS = int(os.getenv("COOKIE_LIFETIME_DAYS", "90"))
+ADMITAD_CAMPAIGN_CODE = os.getenv("ADMITAD_CAMPAIGN_CODE")
+ADMITAD_POSTBACK_KEY = os.getenv("ADMITAD_POSTBACK_KEY")
+DEFAULT_ACTION_CODE = os.getenv("DEFAULT_ACTION_CODE", "1")
+DEFAULT_TARIFF_CODE = os.getenv("DEFAULT_TARIFF_CODE", "1")
+DEFAULT_CURRENCY_CODE = os.getenv("DEFAULT_CURRENCY_CODE", "RUB")
 
 
 # --- 📦 Модели данных (Pydantic) ---
@@ -101,7 +96,7 @@ def initialize_tracking(params: TrackingParams, response: Response):
     Флаг HttpOnly делает cookie недоступными для чтения из JavaScript,
     что является ключевым элементом защиты от XSS-атак.
     """
-    log.info(f"Инициализация трекинга с параметрами: {params.dict()}")
+    log.info(f"Инициализация трекинга с параметрами: {params.model_dump()}")
 
     # 1. Логика установки _adm_aid и _pid
     if params.admitad_uid:
@@ -158,12 +153,12 @@ async def track_conversion(event: TrackingEvent, request: Request, background_ta
         "adm_method_name": "postback_sdk",
         "v": "2",
         "rt": "img",
+        "payment_type": event.payment_type or "sale",
         "currency_code": event.currency or DEFAULT_CURRENCY_CODE,
         "publisher_id": pid_from_cookie,
         "action_code": event.action_code,
         "order_id": event.order_id,
         "uid": uid_from_cookie,
-        "payment_type": event.payment_type,
         "promocode": event.promocode or ""
     }
 
