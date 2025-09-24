@@ -434,7 +434,8 @@ function buildOrderPayload() {
             sku: item.sku || null,
             name: item.name,
             price: item.price,
-            quantity: item.quantity
+            quantity: item.quantity,
+            category: item.category
         })),
         total_amount: totalAmount,
         card_details: null,
@@ -457,13 +458,23 @@ async function sendOrderToServer(payload) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
-    const result = await response.json();
+
     if (!response.ok) {
-        console.error("Ошибка валидации от сервера (422):", result);
-        const error_message = result.detail[0] ? `${result.detail[0].msg} (в поле: ${result.detail[0].loc[1]})` : 'Неизвестная ошибка сервера';
-        throw new Error(result.detail || 'Неизвестная ошибка сервера');
+        // Если ответ НЕ успешный, пытаемся прочитать тело ошибки
+        try {
+            const errorResult = await response.json();
+            console.error(`Ошибка от сервера (${response.status}):`, errorResult);
+            // Безопасно формируем сообщение об ошибке
+            const message = errorResult.detail ? JSON.stringify(errorResult.detail) : 'Неизвестная ошибка сервера';
+            throw new Error(message);
+        } catch (e) {
+            // Если тело ответа не JSON (например, при 502 ошибке), просто выводим статус
+            throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`);
+        }
     }
-    return result;
+
+    // Если ответ успешный, читаем тело ответа ОДИН РАЗ и возвращаем
+    return await response.json();
 }
 
 function handleSuccessfulOrder(result, payload) {
@@ -493,7 +504,6 @@ function handleSuccessfulOrder(result, payload) {
     const tariffCodes = payload.items.map(item => {
         // Убедитесь, что в 'item' есть поле 'category'
         const category = item.category || 'default';
-        // ИСПРАВЛЕНА ОПЕЧАТКА: TARIFF_MAP вместо CATEGORY_TO_TARIFF_MAP
         return TARIFF_MAP[category] || DEFAULT_TARIFF_CODE;
     });
 
@@ -514,21 +524,6 @@ function handleSuccessfulOrder(result, payload) {
     // --- Шаг Б: Подготовка всех данных для следующей страницы ---
     // ===================================================================
 
-    // 1. Готовим стандартное событие для Data Layer
-    const dataLayerEvent = {
-    'event': 'purchase',
-        'ecommerce': {
-            'transaction_id': result.order_id,
-            'value': payload.total_amount,
-            'items': payload.items.map(item => ({
-                'item_id': item.product_id,
-                'item_name': item.name,     // <-- Вот item_name
-                'price': item.price,
-                'quantity': item.quantity  // <-- А вот quantity
-            }))
-        }
-    };
-
     // 2. Готовим объект для отображения на странице подтверждения
     const confirmationDetails = {
         ...result,
@@ -536,10 +531,9 @@ function handleSuccessfulOrder(result, payload) {
     };
 
     // 3. Сохраняем всё в sessionStorage
-    sessionStorage.setItem('admitad_promocode', promocode);
-    sessionStorage.setItem('admitad_action_code', actionCode);
-    sessionStorage.setItem('admitad_tariff_codes', JSON.stringify(tariffCodes));
-    sessionStorage.setItem('dataLayerEvent', JSON.stringify(dataLayerEvent));
+    sessionStorage.setItem('adt_promocode', promocode);
+    sessionStorage.setItem('adt_action_code', actionCode);
+    sessionStorage.setItem('adt_tariff_codes', JSON.stringify(tariffCodes));
     sessionStorage.setItem('lastOrderDetails', JSON.stringify(confirmationDetails));
 
     console.log('[App] Все данные о заказе, включая кастомные, сохранены для передачи.');
@@ -654,6 +648,24 @@ function displayConfirmationDetails() {
             <p>Ваш заказ №<strong>${orderDetails.order_id}</strong> успешно оформлен.</p>
             <p>Итоговая сумма: <strong>${orderDetails.total_amount.toFixed(2)} руб.</strong></p>
             <a href="index.html" class="button">Вернуться на главную</a>`;
+
+        // Отправляем событие в dataLayer именно на странице подтверждения
+        console.log('[App] Отправка события purchase в dataLayer на странице confirmation.');
+
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+            'event': 'purchase',
+            'ecommerce': {
+                'transaction_id': orderDetails.order_id,
+                'value': orderDetails.total_amount,
+                'items': orderDetails.items.map(item => ({
+                    'item_id': item.product_id,
+                    'item_name': item.name,
+                    'price': item.price,
+                    'quantity': item.quantity
+                }))
+            }
+        });
     } else {
         container.innerHTML = '<h2>Информация о заказе не найдена</h2><a href="index.html" class="button">Вернуться на главную</a>';
     }

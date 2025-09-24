@@ -96,7 +96,7 @@ def _simulate_bank_processing(card: CardDetails) -> dict:
         getattr(card, key) == value for key, value in db.TEST_CARD_DATA.items())
     if is_valid:
         return {"status": "success",
-                "transaction_id": random.randint(100000, 999999)}
+                "transaction_id": str(random.randint(100000, 999999))}
     return {"status": "failed", "reason": "Неверные данные карты."}
 
 

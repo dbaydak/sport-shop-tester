@@ -1,27 +1,60 @@
-// Файл: assets/int_loader.js
 /**
- * @file Admitad Tracker Script
- * @version 2.0.0
- * @description Этот скрипт является клиентской частью трекинговой системы.
+ * @file Admitad Universal Tracker Script
+ * @version 3.0.0
+ * @description Этот скрипт является универсальной клиентской частью трекинговой системы Admitad.
  * Его задачи:
- * 1. Отслеживать параметры визита (admitad_uid, utm_source и др.) при заходе на сайт.
- * 2. Передавать эти параметры на внутренний API для установки безопасных First-Party cookies.
- * 3. Слушать объект dataLayer на предмет события покупки ('purchase').
- * 4. Собирать данные о заказе и отправлять их на внутренний API для дальнейшей обработки.
- * 5. Обеспечивать гибкость за счет настраиваемого маппинга полей dataLayer.
+ * 1. Отслеживать параметры визита (admitad_uid и др.) и передавать их на серверный шлюз для установки First-Party cookie.
+ * 2. Обеспечивать гибкую настройку под любую структуру dataLayer.
+ * 3. Поддерживать несколько имён для события покупки (например, 'purchase', 'paid_order').
+ * 4. Предоставлять альтернативный ("активный") режим работы для сайтов без dataLayer через ручной вызов.
+ * 5. Приоритетно рассчитывать сумму заказа по товарам, а не по общей сумме, для максимальной точности.
+ * 6. Использовать sessionStorage для надёжной передачи дополнительных данных и как "страховку" при редиректах, с возможностью полного отключения этой функции.
+ * 7. Работать в изолированном пространстве имён в sessionStorage (с префиксами), чтобы не конфликтовать с другими скриптами.
  */
 
 (function() {
     'use strict';
 
-    // --- ⚙️ 1. ОБЪЕКТ КОНФИГУРАЦИИ ---
+    // ===================================================================
+    // --- ⚙️ 1. КОНФИГУРАЦИЯ ТРЕКЕРА ---
     // ЭТО ЕДИНСТВЕННЫЙ БЛОК, КОТОРЫЙ МОЖЕТ ПОТРЕБОВАТЬСЯ ОТРЕДАКТИРОВАТЬ.
-    // Укажите здесь пути к данным в вашем объекте dataLayer.
+    // ===================================================================
+
+    /**
+     * @description Основные настройки работы трекера.
+     */
+    const trackerConfig = {
+        /**
+         * Поставьте false, чтобы полностью отключить использование sessionStorage.
+         * В этом режиме трекер будет полагаться ИСКЛЮЧИТЕЛЬНО на данные из dataLayer
+         * или на данные из ручного вызова triggerPurchase().
+         * ВАЖНО: При значении false перестает работать "страховка" от потери dataLayer
+         * при редиректах с внешних платежных систем.
+         */
+        USE_SESSION_STORAGE: false,
+        /**
+         * Поставьте true, чтобы включить подробные логи в консоли.
+         * На рабочем сайте рекомендуется ставить false.
+         * Можно также активировать, добавив в URL параметр ?admitad_debug=true
+         */
+        DEBUG_MODE: false
+    };
+
+    // Динамическое включение DEBUG_MODE через URL-параметр
+    if (new URLSearchParams(window.location.search).has('admitad_debug')) {
+        trackerConfig.DEBUG_MODE = true;
+    }
+
+    /**
+     * @description Маппинг полей для dataLayer. Укажите здесь пути к данным
+     * в вашем объекте dataLayer, если они отличаются от стандартных.
+     */
     const dataLayerMapping = {
         // --- Основные поля заказа ---
-        purchase_event_name: 'purchase', // Название события покупки в dataLayer
+        // Укажите одно или несколько имён событий, которые должны считаться покупкой.
+        purchase_event_names: ['purchase', 'paid_order'],
         transaction_id: 'ecommerce.transaction_id', // Путь к ID заказа
-        order_value: 'ecommerce.value',             // Путь к общей сумме заказа
+        order_value: 'ecommerce.value',             // Путь к ОБЩЕЙ сумме заказа (используется как fallback)
         currency: 'ecommerce.currency',             // Путь к валюте заказа
         items: 'ecommerce.items',                   // Путь к массиву товаров
 
@@ -32,7 +65,36 @@
         item_sku: 'item_variant'                    // Артикул (SKU) товара, если есть
     };
 
+    /**
+     * @description Кастомный источник данных.
+     * Используйте этот объект, если на вашем сайте нет dataLayer.
+     * Вам нужно будет переопределить эти функции на странице подтверждения заказа
+     * и затем вызвать window.admitadTracker.triggerPurchase().
+     */
+    const customDataSource = {
+        getOrderId: null,      // Пример: () => window.myOrder.id
+        getOrderAmount: null,  // Пример: () => window.myOrder.total
+        getCurrency: null,     // Пример: () => "RUB"
+        getItems: null         // Пример: () => window.myOrder.items
+    };
+    // ===================================================================
+
+
+    let isConversionSent = false; // Флаг, чтобы избежать двойной отправки конверсии.
+
     // --- 🛠️ 2. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
+
+    /**
+     * Логгер для режима отладки.
+     * @param {string} message - Сообщение для вывода.
+     * @param {*} [details] - Дополнительные данные.
+     */
+    function logDebug(message, details) {
+        // Проверяем флаг в конфигурации
+        if (trackerConfig.DEBUG_MODE) {
+            console.log(`[Admitad Tracker DEBUG] ${message}`, details || '');
+        }
+    }
 
     /**
      * Безопасно извлекает вложенное значение из объекта по строковому пути.
@@ -73,14 +135,10 @@
      * @returns {Promise<boolean>} - Возвращает true в случае успеха, false в случае неудачи.
      */
     async function track(type, data, items = []) {
-        // Проверка наличия обязательного ID заказа.
         if (!data || !data.orderId) {
             logError('Отсутствует обязательное поле orderId для трекинга.', data);
             return false;
         }
-
-        // Формирование тела запроса (payload) к API.
-        // Все данные приводятся к строгим типам для надежности.
         const payload = {
             orderId: String(data.orderId),
             orderAmount: Number(data.orderAmount || 0),
@@ -96,26 +154,21 @@
                 sku: item.sku || null
             }))
         };
-
         console.log('[Admitad Tracker] Отправка события на API-шлюз:', payload);
-
         try {
             const response = await fetch('/s/track-conversion', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                // credentials: 'include' - критически важный параметр.
-                // Он разрешает браузеру отправлять HttpOnly cookie, установленные сервером.
-                credentials: 'include', // Обязательно для отправки HttpOnly cookies
+                credentials: 'include',
                 body: JSON.stringify(payload)
             });
-
             if (response.ok) {
                 console.log('[Admitad Tracker] Событие успешно отправлено на сервер.');
-                // 🔧 Надежность: удаляем данные из sessionStorage ТОЛЬКО после успешного ответа
-                // Это предотвращает потерю данных при сбое сети.
-                sessionStorage.removeItem('admitad_action_code');
-                sessionStorage.removeItem('admitad_promocode');
-                sessionStorage.removeItem('admitad_tariff_codes');
+                if (trackerConfig.USE_SESSION_STORAGE) {
+                    sessionStorage.removeItem('adt_action_code');
+                    sessionStorage.removeItem('adt_promocode');
+                    sessionStorage.removeItem('adt_tariff_codes');
+                }
                 return true;
             } else {
                 logError('Сервер вернул ошибку при отправке события.', { status: response.status, statusText: response.statusText });
@@ -127,68 +180,122 @@
         }
     }
 
-    // --- 🔄 4. ОБРАБОТЧИК РЕДИРЕКТОВ (например, с платежных шлюзов) ---
+    // --- 🔄 4. ОБРАБОТЧИК РЕДИРЕКТОВ ---
 
     /**
      * Этот блок решает проблему потери dataLayer при редиректах (например, с внешних платежных шлюзов).
      * Если событие не удалось обработать до редиректа, оно сохраняется в sessionStorage,
      * а при возврате на сайт - извлекается и обрабатывается.
      */
-    (function handleSessionStorageEvent() {
-        const pendingEvent = sessionStorage.getItem('dataLayerEvent');
-        if (pendingEvent) {
-            try {
-                window.dataLayer = window.dataLayer || [];
-                window.dataLayer.push(JSON.parse(pendingEvent));
-                sessionStorage.removeItem('dataLayerEvent');
-                console.log('[Admitad Tracker] Обнаружено и обработано отложенное событие из sessionStorage.');
-            } catch (e) {
-                logError("Ошибка парсинга dataLayerEvent из sessionStorage", e);
+    if (trackerConfig.USE_SESSION_STORAGE) {
+        (function handleSessionStorageEvent() {
+            const pendingEvent = sessionStorage.getItem('adt_dataLayerEvent');
+            if (pendingEvent) {
+                try {
+                    window.dataLayer = window.dataLayer || [];
+                    window.dataLayer.push(JSON.parse(pendingEvent));
+                    sessionStorage.removeItem('adt_dataLayerEvent');
+                    console.log('[Admitad Tracker] Обнаружено и обработано отложенное событие из sessionStorage.');
+                } catch (e) {
+                    logError("Ошибка парсинга dataLayerEvent из sessionStorage", e);
+                }
             }
-        }
-    })();
+        })();
+    }
 
-    // --- 🎧 5. "УМНЫЙ" СЛУШАТЕЛЬ DATA LAYER ---
+
+    // --- 💡 5. ЦЕНТРАЛЬНЫЙ ОБРАБОТЧИК КОНВЕРСИИ ---
+
+    /**
+     * Центральная функция, которая обрабатывает данные о конверсии,
+     * полученные из любого источника (dataLayer или кастомный вызов).
+     * @param {object} data - Объект с данными о заказе.
+     */
+    async function processConversionData(data) {
+        if (isConversionSent) {
+            console.log('[Admitad Tracker] Конверсия уже была отправлена. Повторная отправка отменена.');
+            return;
+        }
+        if (!data || !data.orderId) {
+            logError('Отсутствует обязательное поле orderId для трекинга.', data);
+            return;
+        }
+
+        isConversionSent = true;
+        console.log('[Admitad Tracker] Запуск трекинга конверсии.', data);
+
+        let promocode = null;
+        let actionCode = null;
+        let tariffCodes = null;
+
+        if (trackerConfig.USE_SESSION_STORAGE) {
+            promocode = sessionStorage.getItem('adt_promocode');
+            actionCode = sessionStorage.getItem('adt_action_code');
+            try {
+                const tariffCodesRaw = sessionStorage.getItem('adt_tariff_codes');
+                if (tariffCodesRaw) {
+                    tariffCodes = JSON.parse(tariffCodesRaw);
+                }
+            } catch (e) { logError("Ошибка парсинга tariff_codes", e); }
+        }
+
+        await track('sale', {
+            orderId: data.orderId,
+            orderAmount: data.orderAmount,
+            currency: data.currency,
+            promocode: promocode,
+            actionCode: actionCode,
+            tariffCodes: tariffCodes
+        }, data.items || []);
+    }
+
+
+    // --- 🎧 6. СЛУШАТЕЛЬ DATA LAYER ---
 
     /**
      * Главная функция-обработчик, которая реагирует на события в dataLayer.
      * @param {object} event - Событие из dataLayer.
      */
     async function processDataLayerEvent(event) {
-        // 1. Проверяем, что это событие покупки, указанное в конфигурации.
-        if (!event || typeof event !== 'object' || event.event !== dataLayerMapping.purchase_event_name) {
+        const purchaseEvents = dataLayerMapping.purchase_event_names || dataLayerMapping.purchase_event_name;
+        const validEventNames = Array.isArray(purchaseEvents) ? purchaseEvents : [purchaseEvents];
+
+        if (!event || typeof event !== 'object' || !event.event || !validEventNames.includes(event.event)) {
             return;
         }
 
-        // 2. Извлекаем ID заказа, используя гибкий маппинг. Если его нет - прекращаем работу.
         const orderId = getNestedValue(event, dataLayerMapping.transaction_id);
-        if (!orderId) {
-            // Если событие 'purchase', но без ID заказа, то игнорируем его.
-            return;
-        }
+        if (!orderId) { return; }
 
-        console.log('[Admitad Tracker] Обнаружено событие "purchase". Запуск трекинга.');
+        console.log(`[Admitad Tracker] Обнаружено событие покупки "${event.event}" в dataLayer.`);
 
-        // 3. Извлекаем остальные данные о заказе и товарах через маппинг.
-        const orderAmount = getNestedValue(event, dataLayerMapping.order_value);
-        const currency = getNestedValue(event, dataLayerMapping.currency);
         const itemsData = getNestedValue(event, dataLayerMapping.items) || [];
+        let finalOrderAmount;
 
-        // 4. Получаем необязательные данные (промокод и др.) из sessionStorage.
-        // Они могли быть установлены на предыдущих шагах воронки.
-        const promocode = sessionStorage.getItem('admitad_promocode');
-        const actionCode = sessionStorage.getItem('admitad_action_code');
-        let tariffCodes = null;
-        try {
-            const tariffCodesRaw = sessionStorage.getItem('admitad_tariff_codes');
-            if (tariffCodesRaw) {
-                tariffCodes = JSON.parse(tariffCodesRaw);
+        // Приоритетный способ: считаем сумму по товарам.
+        if (Array.isArray(itemsData) && itemsData.length > 0) {
+            const totalFromItems = itemsData.reduce((sum, item) => {
+                const price = Number(getNestedValue(item, dataLayerMapping.item_price) || 0);
+                const quantity = Number(getNestedValue(item, dataLayerMapping.item_quantity) || 1);
+                if (!isNaN(price) && !isNaN(quantity)) {
+                    return sum + (price * quantity);
+                }
+                return sum;
+            }, 0);
+
+            if (totalFromItems > 0) {
+                finalOrderAmount = totalFromItems;
+                console.log('[Admitad Tracker] Сумма заказа рассчитана по товарам (items):', finalOrderAmount);
             }
-        } catch (e) {
-            logError("Ошибка парсинга tariff_codes из sessionStorage", e);
         }
 
-        // 5. Преобразуем массив товаров в стандартизированный формат.
+        // Fallback: если по товарам посчитать не удалось, берем общую сумму.
+        if (typeof finalOrderAmount === 'undefined') {
+            finalOrderAmount = Number(getNestedValue(event, dataLayerMapping.order_value) || 0);
+            console.log('[Admitad Tracker] Сумма заказа взята из общего поля (ecommerce.value):', finalOrderAmount);
+        }
+
+        const currency = getNestedValue(event, dataLayerMapping.currency);
         const items = itemsData.map(item => ({
             id: String(getNestedValue(item, dataLayerMapping.item_id)),
             price: Number(getNestedValue(item, dataLayerMapping.item_price)),
@@ -196,30 +303,24 @@
             sku: String(getNestedValue(item, dataLayerMapping.item_sku) || '')
         }));
 
-        // 6. Вызываем основную функцию отправки данных.
-        await track('sale', {
+        processConversionData({
             orderId: orderId,
-            orderAmount: orderAmount,
+            orderAmount: finalOrderAmount,
             currency: currency,
-            promocode: promocode,
-            actionCode: actionCode,
-            tariffCodes: tariffCodes
-        }, items);
+            items: items
+        });
     }
 
-    // Инициализируем dataLayer, если его нет, и подписываемся на события.
+    // Инициализация и подписка на dataLayer
     window.dataLayer = window.dataLayer || [];
-    window.dataLayer.forEach(event => processDataLayerEvent(event)); // Обрабатываем уже существующие события
-
+    window.dataLayer.forEach(event => processDataLayerEvent(event));
     const originalPush = window.dataLayer.push;
     window.dataLayer.push = function(event) {
-        // Перехватываем новые события
         processDataLayerEvent(event);
         return originalPush.apply(this, arguments);
     };
 
-
-    // --- 🚀 6. ИНИЦИАЛИЗАЦИЯ СЕССИИ ТРЕКЕРА ---
+    // --- 🚀 7. ИНИЦИАЛИЗАЦИЯ СЕССИИ ТРЕКЕРА ---
 
     /**
      * Эта функция выполняется при каждой загрузке страницы.
@@ -234,8 +335,6 @@
             gclid: getParamFromURL('gclid'),
             fbclid: getParamFromURL('fbclid')
         };
-
-        // Отправляем запрос, только если в URL есть хотя бы один из отслеживаемых параметров.
         if (Object.values(params).some(p => p !== null)) {
             try {
                 console.log('[Admitad Tracker] Инициализация сессии, отправка параметров на сервер:', params);
@@ -249,15 +348,38 @@
             }
         }
     }
-
-    // Запускаем инициализацию при каждой загрузке страницы
     initializeTrackerSession();
 
-    // --- 🌐 7. ГЛОБАЛЬНЫЙ ДОСТУП ---
+    // --- 🌐 8. ГЛОБАЛЬНЫЙ ДОСТУП ---
 
-    // Делаем функцию track доступной глобально (window.admitadTracker.track(...)).
-    // Это позволяет вызывать трекинг вручную из других скриптов, если это необходимо.
+    /**
+     * Делаем ключевые функции доступными глобально через window.admitadTracker.
+     * Это позволяет вызывать трекинг вручную из других скриптов.
+     */
     window.admitadTracker = {
+        /**
+         * Позволяет настроить кастомный источник данных.
+         * @param {object} customConfig - Объект с функциями для получения данных.
+         */
+        configure: function(customConfig) {
+            Object.assign(customDataSource, customConfig);
+        },
+        /**
+         * Запускает трекинг, используя данные из кастомного источника.
+         */
+        triggerPurchase: function() {
+            console.log('[Admitad Tracker] Ручной вызов triggerPurchase().');
+            const data = {
+                orderId: customDataSource.getOrderId ? customDataSource.getOrderId() : null,
+                orderAmount: customDataSource.getOrderAmount ? customDataSource.getOrderAmount() : 0,
+                currency: customDataSource.getCurrency ? customDataSource.getCurrency() : null,
+                items: customDataSource.getItems ? customDataSource.getItems() : []
+            };
+            processConversionData(data);
+        },
+        /**
+         * Прямой вызов функции трекинга (для продвинутого использования).
+         */
         track: track
     };
 
