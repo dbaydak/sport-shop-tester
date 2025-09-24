@@ -1,6 +1,6 @@
 /**
  * @file Admitad Universal Tracker Script
- * @version 3.0.0
+ * @version 3.1.0
  * @description Этот скрипт является универсальной клиентской частью трекинговой системы Admitad.
  * Его задачи:
  * 1. Отслеживать параметры визита (admitad_uid и др.) и передавать их на серверный шлюз для установки First-Party cookie.
@@ -92,7 +92,7 @@
     function logDebug(message, details) {
         // Проверяем флаг в конфигурации
         if (trackerConfig.DEBUG_MODE) {
-            console.log(`[Admitad Tracker DEBUG] ${message}`, details || '');
+            console.log(`[Admitracker DEBUG] ${message}`, details || '');
         }
     }
 
@@ -122,7 +122,7 @@
      * @param {*} [details] - Дополнительные данные для вывода в консоль.
      */
     function logError(message, details) {
-        console.error(`[Admitad Tracker] ${message}`, details || '');
+        console.error(`[Admitracker] ${message}`, details || '');
     }
 
     // --- 📡 3. ОСНОВНАЯ ФУНКЦИЯ ТРЕКИНГА ---
@@ -154,7 +154,7 @@
                 sku: item.sku || null
             }))
         };
-        console.log('[Admitad Tracker] Отправка события на API-шлюз:', payload);
+        logDebug('[Admitracker] Отправка события на API-шлюз:', payload);
         try {
             const response = await fetch('/s/track-conversion', {
                 method: 'POST',
@@ -163,7 +163,7 @@
                 body: JSON.stringify(payload)
             });
             if (response.ok) {
-                console.log('[Admitad Tracker] Событие успешно отправлено на сервер.');
+                console.log('[Admitracker] Событие успешно отправлено на сервер.');
                 if (trackerConfig.USE_SESSION_STORAGE) {
                     sessionStorage.removeItem('adt_action_code');
                     sessionStorage.removeItem('adt_promocode');
@@ -195,7 +195,7 @@
                     window.dataLayer = window.dataLayer || [];
                     window.dataLayer.push(JSON.parse(pendingEvent));
                     sessionStorage.removeItem('adt_dataLayerEvent');
-                    console.log('[Admitad Tracker] Обнаружено и обработано отложенное событие из sessionStorage.');
+                    logDebug('[Admitracker] Обнаружено и обработано отложенное событие из sessionStorage.');
                 } catch (e) {
                     logError("Ошибка парсинга dataLayerEvent из sessionStorage", e);
                 }
@@ -213,7 +213,7 @@
      */
     async function processConversionData(data) {
         if (isConversionSent) {
-            console.log('[Admitad Tracker] Конверсия уже была отправлена. Повторная отправка отменена.');
+            logDebug('[Admitracker] Конверсия уже была отправлена. Повторная отправка отменена.');
             return;
         }
         if (!data || !data.orderId) {
@@ -222,7 +222,7 @@
         }
 
         isConversionSent = true;
-        console.log('[Admitad Tracker] Запуск трекинга конверсии.', data);
+        logDebug('[Admitracker] Запуск трекинга конверсии.', data);
 
         let promocode = null;
         let actionCode = null;
@@ -267,7 +267,7 @@
         const orderId = getNestedValue(event, dataLayerMapping.transaction_id);
         if (!orderId) { return; }
 
-        console.log(`[Admitad Tracker] Обнаружено событие покупки "${event.event}" в dataLayer.`);
+        logDebug(`[Admitracker] Обнаружено событие покупки "${event.event}" в dataLayer.`);
 
         const itemsData = getNestedValue(event, dataLayerMapping.items) || [];
         let finalOrderAmount;
@@ -285,14 +285,14 @@
 
             if (totalFromItems > 0) {
                 finalOrderAmount = totalFromItems;
-                console.log('[Admitad Tracker] Сумма заказа рассчитана по товарам (items):', finalOrderAmount);
+                logDebug('[Admitracker] Сумма заказа рассчитана по товарам (items):', finalOrderAmount);
             }
         }
 
         // Fallback: если по товарам посчитать не удалось, берем общую сумму.
         if (typeof finalOrderAmount === 'undefined') {
             finalOrderAmount = Number(getNestedValue(event, dataLayerMapping.order_value) || 0);
-            console.log('[Admitad Tracker] Сумма заказа взята из общего поля (ecommerce.value):', finalOrderAmount);
+            logDebug('[Admitracker] Сумма заказа взята из общего поля (ecommerce.value):', finalOrderAmount);
         }
 
         const currency = getNestedValue(event, dataLayerMapping.currency);
@@ -337,7 +337,7 @@
         };
         if (Object.values(params).some(p => p !== null)) {
             try {
-                console.log('[Admitad Tracker] Инициализация сессии, отправка параметров на сервер:', params);
+                logDebug('[Admitracker] Инициализация сессии, отправка параметров на сервер:', params);
                 await fetch('/s/init-tracking', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -368,7 +368,7 @@
          * Запускает трекинг, используя данные из кастомного источника.
          */
         triggerPurchase: function() {
-            console.log('[Admitad Tracker] Ручной вызов triggerPurchase().');
+            logDebug('[Admitracker] Ручной вызов triggerPurchase().');
             const data = {
                 orderId: customDataSource.getOrderId ? customDataSource.getOrderId() : null,
                 orderAmount: customDataSource.getOrderAmount ? customDataSource.getOrderAmount() : 0,
@@ -383,6 +383,6 @@
         track: track
     };
 
-    console.log('[Admitad Tracker] Скрипт-слушатель успешно инициализирован.');
+    console.log('[Admitracker] Скрипт-слушатель успешно инициализирован.');
 
 })();
