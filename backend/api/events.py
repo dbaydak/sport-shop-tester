@@ -4,6 +4,7 @@ from backend.services import order_service
 
 router = APIRouter()
 
+
 # Исправляем URL на "/registrations"
 @router.post("/registrations", summary="Записать пользователя на мероприятие")
 def create_event_registration(registration: EventRegistration):

@@ -4,6 +4,7 @@ from backend.services import order_service
 
 router = APIRouter()
 
+
 @router.post("/orders", summary="Оформить новый заказ")
 def create_order(order: Order):
     try:

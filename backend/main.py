@@ -44,7 +44,7 @@ def get_categories():
         logging.warning("База данных продуктов пуста")
         return []
     # Используем множество (set) для автоматического получения уникальных значений
-    unique_categories = sorted(list({p['category'] for p in all_products}))
+    unique_categories = sorted(list({p["category"] for p in all_products}))
     logging.info(f"Найденные категории: {unique_categories}")
     return unique_categories
 

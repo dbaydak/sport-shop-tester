@@ -4,6 +4,7 @@ from backend import db
 
 router = APIRouter()
 
+
 def get_unique_categories() -> List[str]:
     """Вспомогательная функция для получения уникальных категорий из "базы данных"."""
     categories = set()
@@ -11,10 +12,12 @@ def get_unique_categories() -> List[str]:
         categories.add(product["category"])
     return sorted(list(categories))
 
+
 @router.get("/categories", summary="Получить список всех категорий товаров")
 def get_categories():
     """Отдает отсортированный список уникальных категорий."""
     return get_unique_categories()
+
 
 @router.get("/products", summary="Получить список товаров (с фильтрацией по категории)")
 def get_products(category: Optional[str] = None):
@@ -30,6 +33,7 @@ def get_products(category: Optional[str] = None):
         return filtered_products
     # Если категория не указана, возвращаем все товары
     return db.PRODUCTS_DB
+
 
 @router.get("/products/{product_id}", summary="Получить один товар по ID")
 def get_product_by_id(product_id: int):

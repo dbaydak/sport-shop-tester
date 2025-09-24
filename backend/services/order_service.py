@@ -13,8 +13,7 @@ def process_new_order(order: Order) -> dict:
     Полный цикл обработки нового заказа: проверка, симуляция оплаты,
     сохранение транзакции и вызов трекинга.
     """
-    logging.info(
-        f"СЕРВИС: Начало обработки заказа для {order.user_email}...")
+    logging.info(f"СЕРВИС: Начало обработки заказа для {order.user_email}...")
     time.sleep(1)
     try:
         # 1. Серверная валидация суммы
@@ -39,7 +38,7 @@ def process_new_order(order: Order) -> dict:
             user_email=order.user_email,
             amount=server_total,
             payment_method=order.payment_method,
-            admitad_uid=order.admitad_uid
+            admitad_uid=order.admitad_uid,
         )
 
         # 4. Вызов сервиса трекинга
@@ -58,8 +57,7 @@ def process_event_registration(registration: EventRegistration) -> dict:
     """
     Полный цикл обработки записи на мероприятие.
     """
-    logging.info(
-        f"СЕРВИС: Начало обработки записи для {registration.user_email}...")
+    logging.info(f"СЕРВИС: Начало обработки записи для {registration.user_email}...")
     time.sleep(1)
     try:
         registration_id = random.randint(10000, 99999)
@@ -70,7 +68,7 @@ def process_event_registration(registration: EventRegistration) -> dict:
             user_email=registration.user_email,
             amount=0.0,
             payment_method="event_registration",
-            admitad_uid=registration.admitad_uid
+            admitad_uid=registration.admitad_uid,
         )
 
         # Вызов сервиса трекинга
@@ -80,7 +78,7 @@ def process_event_registration(registration: EventRegistration) -> dict:
         return {
             "registration_id": registration_id,
             "user_name": registration.user_name,
-            "event_name": registration.event_name
+            "event_name": registration.event_name,
         }
     except ValueError as e:
         # Добавляем логирование ошибок
@@ -91,19 +89,23 @@ def process_event_registration(registration: EventRegistration) -> dict:
 
 # --- Приватные вспомогательные функции, используемые только внутри этого сервиса ---
 
+
 def _simulate_bank_processing(card: CardDetails) -> dict:
     is_valid = all(
-        getattr(card, key) == value for key, value in db.TEST_CARD_DATA.items())
+        getattr(card, key) == value for key, value in db.TEST_CARD_DATA.items()
+    )
     if is_valid:
-        return {"status": "success",
-                "transaction_id": str(random.randint(100000, 999999))}
+        return {
+            "status": "success",
+            "transaction_id": str(random.randint(100000, 999999)),
+        }
     return {"status": "failed", "reason": "Неверные данные карты."}
 
 
 def _create_and_save_transaction(**kwargs) -> dict:
     """Создает, сохраняет транзакцию и возвращает ее в виде словаря."""
-    if 'timestamp' not in kwargs:
-        kwargs['timestamp'] = datetime.now()
+    if "timestamp" not in kwargs:
+        kwargs["timestamp"] = datetime.now()
 
     new_transaction = Transaction(**kwargs)
     transaction_dict = new_transaction.dict(exclude_none=True)
