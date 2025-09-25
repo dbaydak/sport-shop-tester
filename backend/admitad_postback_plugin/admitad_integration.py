@@ -136,7 +136,8 @@ def send_postback_in_background(url: str, params: dict, order_id: str):
         log.info(f"ФОНОВЫЙ ПОСТБЭК для заказа {order_id} успешно отправлен.")
     except requests.exceptions.RequestException as e:
         log.error(
-            f"ОШИБКА ФОНОВОГО ПОСТБЭКА: Не удалось отправить S2S Postback для заказа {order_id}: {e}"
+            f"ОШИБКА ФОНОВОГО ПОСТБЭКА: "
+            f"Не удалось отправить S2S Postback для заказа {order_id}: {e}"
         )
 
 
@@ -208,7 +209,10 @@ async def track_conversion(
     source_from_cookie = request.cookies.get("_last_source")
     pid_from_cookie = request.cookies.get("_pid")
     log.debug(
-        f"Получены куки: _adm_aid='{uid_from_cookie}', _last_source='{source_from_cookie}', _pid='{pid_from_cookie}'"
+        f"Получены куки: "
+        f"_adm_aid='{uid_from_cookie}',"
+        f"_last_source='{source_from_cookie}',"
+        f"_pid='{pid_from_cookie}'"
     )
 
     # 2. Формируем базовые параметры для postback-запроса.
@@ -242,7 +246,8 @@ async def track_conversion(
         else:
             final_tariff_codes = [DEFAULT_TARIFF_CODE] * position_count
             log.debug(
-                f"Используется дефолтное значение для тарифов: {final_tariff_codes}"
+                f"Используется дефолтное значение для тарифов: "
+                f"{final_tariff_codes}"
             )
 
         admitad_basket = {
@@ -273,10 +278,13 @@ async def track_conversion(
     # Условие: отправляем, если есть admitad_uid И (последний источник - Admitad ИЛИ использован промокод).
     if (event.promocode and event.promocode.strip()) or is_admitad_source:
         attribution_reason = (
-            "промокоду" if event.promocode and event.promocode.strip() else "cookie"
+            "промокоду" if event.promocode
+                           and event.promocode.strip() else "cookie"
         )
         log.info(
-            f"Атрибуция Admitad подтверждена по {attribution_reason} для заказа {event.order_id}. Планирование постбэка..."
+            f"Атрибуция Admitad подтверждена по "
+            f"{attribution_reason} для заказа {event.order_id}. "
+            f"Планирование постбэка..."
         )
         background_tasks.add_task(
             send_postback_in_background, postback_url, params, event.order_id
@@ -286,7 +294,10 @@ async def track_conversion(
         # Если условие не выполнено, postback не отправляется.
         log.debug("Условие для отправки постбэка НЕ ВЫПОЛНЕНО.")
         log.info(
-            f"ДЕДУПЛИКАЦИЯ: Конверсия для UID '{uid_from_cookie}' атрибуцирована источнику '{source_from_cookie}'. Постбэк не отправлен."
+            f"ДЕДУПЛИКАЦИЯ: "
+            f"Конверсия для UID '{uid_from_cookie}' "
+            f"атрибуцирована источнику '{source_from_cookie}'. "
+            f"Постбэк не отправлен."
         )
         return {"status": "deduplicated", "source": source_from_cookie}
 

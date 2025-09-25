@@ -52,7 +52,7 @@
     const dataLayerMapping = {
         // --- Основные поля заказа ---
         // Укажите одно или несколько имён событий, которые должны считаться покупкой.
-        purchase_event_names: ['purchase', 'paid_order', 'generate_lead'],
+        purchase_event_names: ['purchase', 'paid_order', 'order_completed', 'transaction_complete', 'purchase_completed', 'order_success', 'conversion', 'checkout_complete', 'generate_lead'],
         transaction_id: 'ecommerce.transaction_id', // Путь к ID заказа
         order_value: 'ecommerce.value',             // Путь к ОБЩЕЙ сумме заказа (используется как fallback)
         currency: 'ecommerce.currency',             // Путь к валюте заказа
